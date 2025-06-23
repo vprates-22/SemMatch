@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detailed Experiment View</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f7fa;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 20px auto;
+            background-color: white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            border-radius: 8px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            color: #4CAF50;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            font-size: 1rem;
+            margin: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .btn:hover {
+            background-color: #45a049;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .result-info {
+            margin-top: 30px;
+        }
+
+        .result-info img {
+            width: 100%;
+            max-width: 800px;
+            display: block;
+            margin: 20px auto;
+            border: 3px solid #ddd;
+            border-radius: 8px;
+        }
+
+        .select-pair, .select-type {
+            margin-bottom: 30px;
+        }
+
+        .select-pair input, .select-type select {
+            font-size: 1rem;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            width: 100%;
+            max-width: 200px;
+        }
+
+        .visualize-btns {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .visualize-btns .btn {
+            margin: 5px;
+        }
+
+        /* Class to hide the type selection field */
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>Detailed Experiment View</h1>
+        </div>
+
+        <!-- Experiment pair selector (input field) -->
+        <div class="select-pair">
+            <label for="pair-input">Enter the image pair number:</label>
+            <input id="pair-input" type="number" min="0" step="1" placeholder="Pair number" />
+        </div>
+
+        <!-- Visualization type selector (shown only if not 'Mask with Mask') -->
+        <div class="select-type" id="type-select-container">
+            <label for="type-select">Select the visualization type:</label>
+            <select id="type-select">
+                <option value="all">All</option>
+                <option value="hits">Hits</option>
+                <option value="misses">Misses</option>
+            </select>
+        </div>
+
+        <!-- Visualization buttons -->
+        <div class="visualize-btns">
+            <button class="btn" onclick="selectVisualization('point2point')">Point with Point</button>
+            <button class="btn" onclick="selectVisualization('mask2mask')">Mask with Mask</button>
+            <button class="btn" onclick="selectVisualization('mask2point')">Mask with Point</button>
+        </div>
+
+        <!-- Image display -->
+        <div class="result-info">
+            <img id="result-image" src="/visualization/{{experiment_id}}/" alt="Visualization">
+        </div>
+    </div>
+
+    <script>
+        let visualizationType = 'point2point'; // Initial visualization type
+
+        // Updates the image based on the selected parameters
+        function updateImage() {
+            const pairIndex = document.getElementById('pair-input').value || 0;
+            const visualType = document.getElementById('type-select') ? document.getElementById('type-select').value : 'all';
+            
+            // Ensures the pair number is valid
+            if (isNaN(pairIndex) || pairIndex < 0) {
+                alert("Please enter a valid number for the image pair.");
+                return;
+            }
+
+            const url = `/visualization/0/?type=${visualizationType}&set=${visualType}&point-match=${pairIndex}`;
+            document.getElementById('result-image').src = url;
+        }
+
+        // Function to select the visualization type (point with point, mask, etc.)
+        function selectVisualization(type) {
+            visualizationType = type;
+            toggleTypeSelect(type); // Show/hide the type selection field as needed
+            updateImage();  // Update the image as soon as the type is changed
+        }
+
+        // Function to show or hide the type selection field (hits, misses, etc.)
+        function toggleTypeSelect(type) {
+            const typeSelectContainer = document.getElementById('type-select-container');
+            
+            // If the visualization is "Mask with Mask", we hide the type field
+            if (type === 'mask2mask') {
+                typeSelectContainer.classList.add('hidden');
+            } else {
+                typeSelectContainer.classList.remove('hidden');
+            }
+        }
+
+        // Adds event listeners for automatic updates
+        document.getElementById('pair-input').addEventListener('input', updateImage);
+        document.getElementById('type-select').addEventListener('change', updateImage);
+
+        // Calls the function to ensure the image is loaded on initialization
+        window.onload = updateImage;
+    </script>
+
+</body>
+</html>

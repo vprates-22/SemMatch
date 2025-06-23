@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Experiment Results</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f7fa;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 20px auto;
+            background-color: white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            border-radius: 8px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            color: #4CAF50;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            font-size: 1rem;
+            margin: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .btn:hover {
+            background-color: #45a049;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .header .btn-group {
+            display: flex;
+        }
+
+        .header .btn-group .btn {
+            margin: 0 5px;
+        }
+
+        .results-list {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        .results-list li {
+            margin-bottom: 15px;
+            background-color: #ffffff;
+            padding: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.3s;
+        }
+
+        .results-list li:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .result-info {
+            flex-grow: 1;
+            margin-left: 20px;
+        }
+
+        .link-detail {
+            text-decoration: none;
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .link-detail:hover {
+            text-decoration: underline;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 30px;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f1f1f1;
+            color: #555;
+        }
+
+        tr:hover {
+            background-color: #f9f9f9;
+        }
+
+        @media (max-width: 768px) {
+            table {
+                font-size: 0.9rem;
+            }
+
+            th, td {
+                padding: 8px;
+            }
+
+            .btn {
+                font-size: 0.9rem;
+                padding: 10px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- Header with buttons -->
+        <div class="header">
+            <h1>Experiment Results</h1>
+            <div class="btn-group">
+                <!-- Current Scenario Button -->
+                <button class="btn" onclick="window.location.href='/resultados'">General Results</button>
+                <!-- Individual Results Button -->
+                <button class="btn" onclick="window.location.href='/individual_results'">Individual Results</button>
+            </div>
+        </div>
+
+        <!-- Table with general results -->
+        <h2>General Results</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th>Value</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for metric, value in metrics.items() %}
+                    <tr>
+                        <td>{{ metric.replace('_', ' ').capitalize() }}</td>
+                        <td>{{ value | round(2) }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Individual Results</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f7fa;
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 20px auto;
+            background-color: white;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            border-radius: 8px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            color: #4CAF50;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            font-size: 1rem;
+            margin: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .btn:hover {
+            background-color: #45a049;
+        }
+
+        .results-list {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        .results-list li {
+            margin-bottom: 15px;
+            background-color: #ffffff;
+            padding: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: transform 0.3s;
+        }
+
+        .results-list li:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .image-preview {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 5px;
+        }
+
+        .result-info {
+            flex-grow: 1;
+            margin-left: 20px;
+        }
+
+        .link-detail {
+            text-decoration: none;
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .link-detail:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Individual Results</h1>
+        <a href="/" class="btn">General Results</a>
+
+        <h2>Experiment List</h2>
+        <ul class="results-list">
+            {% for result in results %}
+                <li>
+                    <!-- Displaying the images with the cleaned up name -->
+                    <div class="result-info">
+                        <p><strong>Image 0:</strong> {{ '/'.join(result['image0'].split('/')[-3:]) }}</p>
+                        <p><strong>Image 1:</strong> {{ '/'.join(result['image1'].split('/')[-3:]) }}</p>
+                    </div>
+
+                    <!-- Experiment details -->
+                    <div class="result-info">
+                        <p><strong>Point misses:</strong> {{ (1 - ((result['inliers'] | sum) / (result['inliers'] | length))) | round(2) }}</p>
+                        <p><strong>Mask misses:</strong> {{ (1 - ((result['mask_hits'] | sum) / (result['mask_hits'] | length))) | round(2) }}</p>
+                    </div>
+
+                    <!-- Link to experiment details -->
+                    <a href="/details/{{ loop.index0 }}" class="link-detail">View Details</a>
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+
+</body>
+</html>
