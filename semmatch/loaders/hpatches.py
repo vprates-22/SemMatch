@@ -142,7 +142,46 @@ class HPatches(BaseDatasetLoader):
 
         return apply_homography_to_point(x, y, T_0to1)
 
-    def get_inliers(self, )
+    def estimate_hpatches_inliers(
+        self,
+        mkpts0: np.ndarray,
+        mkpts1: np.ndarray,
+        pair_index: int,
+        threshold: float = 6.0,
+        scale_img0: float = 1.0,
+        scale_img1: float = 1.0,
+    ) -> np.ndarray:
+        """
+        Estimates inliers for an HPatches pair using the ground-truth homography.
+
+        Args:
+            mkpts0: Nx2 array of points from image 0.
+            mkpts1: Nx2 array of corresponding points from image 1.
+            pair_index: index of the HPatches pair to use.
+            hpatches_dataset: object providing `map_point(point, pair_index, ...)`.
+            threshold: reprojection error threshold in pixels to consider inliers.
+            scale_img0: optional rescaling factor for image 0.
+            scale_img1: optional rescaling factor for image 1.
+
+        Returns:
+            inliers: boolean mask of shape (N,), True for inliers.
+        """
+        assert mkpts0.shape == mkpts1.shape
+        N = mkpts0.shape[0]
+
+        mapped_points = np.zeros_like(mkpts0, dtype=float)
+        for i, pt0 in enumerate(mkpts0):
+            mapped_points[i] = self.map_point(
+                tuple(pt0),
+                pair_index,
+                scale_img0=scale_img0,
+                scale_img1=scale_img1
+            )
+
+        # Compute Euclidean reprojection error
+        errors = np.linalg.norm(mapped_points - mkpts1, axis=1)
+        inliers = errors < threshold
+        return inliers
 
     @staticmethod
     def build_intrinsic_matrixes(all_info: List[str]) -> NDArray:

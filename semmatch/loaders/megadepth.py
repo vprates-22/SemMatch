@@ -24,7 +24,9 @@ from numpy.typing import NDArray
 
 from semmatch.settings import DATA_PATH
 from semmatch.loaders.base_dataset_loader import BaseDatasetLoader
+
 from semmatch.utils.io import load_image, load_depth, combine_dicts
+from semmatch.utils.loaders import get_inliers_ransac
 
 
 class MegaDepth(BaseDatasetLoader):
@@ -181,6 +183,9 @@ class MegaDepth(BaseDatasetLoader):
         return pairs
 
     def map_point(self, point, pair_index, scale_img0 = 1, scale_img1 = 1):
+        pass
+
+    def get_inliers(self, pair, mkpts0, mkpts1):
         pass
 
     @staticmethod

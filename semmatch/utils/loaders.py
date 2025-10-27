@@ -17,6 +17,7 @@ Functions:
 """
 
 import os
+import poselib
 import zipfile
 import tarfile
 import urllib.request
@@ -25,8 +26,10 @@ from pathlib import Path
 from typing import Union, List
 
 import py7zr
+import numpy as np
 from tqdm import tqdm
 
+from semmatch.utils.evaluation import intrinsics_to_camera
 
 def download_from_url(
     url: str,
@@ -167,3 +170,43 @@ def extract_archive(
         archive_path.unlink()
 
     return extracted_files
+
+
+def get_inliers_ransac(mkpts0: np.ndarray,
+                mkpts1: np.ndarray,
+                K0: np.ndarray,
+                K1: np.ndarray) -> np.ndarray:
+    """
+    Estimates the relative pose between two sets of matched keypoints and returns inliers.
+
+    Uses pose estimation with RANSAC to identify geometrically consistent matches between two views.
+
+    Parameters
+    ----------
+    mkpts0 : np.ndarray
+        Matched keypoints from the first image, shape (N, 2).
+    mkpts1 : np.ndarray
+        Matched keypoints from the second image, shape (N, 2).
+    K0 : np.ndarray
+        Intrinsics matrix for the first camera (3x3).
+    K1 : np.ndarray
+        Intrinsics matrix for the second camera (3x3).
+
+    Returns
+    -------
+    np.ndarray
+        Boolean array of shape (N,) indicating which keypoint matches are inliers.
+    """
+    _, details = poselib.estimate_relative_pose(
+        mkpts0.tolist(),
+        mkpts1.tolist(),
+        intrinsics_to_camera(K0),
+        intrinsics_to_camera(K1),
+        ransac_opt={
+            'max_iterations': 10000,
+            'success_prob': 0.99999,
+            'max_epipolar_error': 6.0,
+        }
+    )
+
+    return np.array(details['inliers']).astype(bool)

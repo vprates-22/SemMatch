@@ -39,7 +39,7 @@ if __name__ == "__main__":
     match_fn = partial(match_reasoning_model, model=model)
 
     semMatch = SemanticEval({
-        'metrics': [Accuracy, F1Score, FalsePositiveRatio, Precision, Recall]
+        'metrics': [Accuracy, F1Score, FalsePositiveRatio, Precision, Recall],
         'sam_model': 'sam2.1_l.pt',
         'data_path': 'hpatches',
         'dataset': 'hpatches',

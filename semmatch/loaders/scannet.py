@@ -177,6 +177,9 @@ class Scannet(BaseDatasetLoader):
     def map_point(self, point, pair_index, scale_img0 = 1, scale_img1 = 1):
         pass
 
+    def get_inliers(self, pair, mkpts0, mkpts1):
+        pass
+
     @staticmethod
     def build_intrinsic_matrixes(all_info: List[str]) -> Tuple[NDArray, NDArray, NDArray]:
         K0 = np.array(all_info[4:13]).astype(float).reshape(3, 3)

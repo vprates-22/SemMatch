@@ -96,6 +96,10 @@ class BaseDatasetLoader(metaclass=ABCMeta):
     def map_point(self, point: Tuple[int, int], pair_index: int, scale_img0: float = 1.0, scale_img1: float = 1.0) -> Tuple[int, int]:
         raise NotImplementedError
 
+    @abstractmethod
+    def get_inliers(self, pair, mkpts0, mkpts1) -> List[bool]:
+        raise NotImplementedError
+
     def download_dataset(self, chunk_size: int = 1024) -> None:
         """
         Downloads a dataset archive from a URL, displays download progress,
