@@ -14,25 +14,23 @@ Classes:
         It handles image preprocessing, mask prediction, matching, and result extraction. It
         also computes LPIPS loss for object similarity between corresponding image regions.
 """
-import json
 import multiprocessing as mp
 from typing import List
 from pathlib import Path
 
-import lpips
 import torch
 import numpy as np
 from tqdm import tqdm
 from torch import Tensor
-from ultralytics import SAM
 
 from semmatch.utils.evaluation import project_points_between_cameras
 
 from semmatch.statistics.orchestrator import MetricsOrchestrator
 
 from semmatch.loaders import get_loader
-from semmatch.helpers import to_cv, get_inliers, to_tensor
-from semmatch.utils.cropping import crop_square_around_mask
+from semmatch.helpers import to_cv, get_inliers
+from semmatch.utils.sam import load_sam, get_object_mask
+from semmatch.utils.lpips import load_lpips, get_obj_similarities
 from semmatch.utils.io import combine_dicts, resize_long_edge
 from semmatch.loaders.base_dataset_loader import DATASET_CONFIG_KEYS
 from semmatch.settings import BASE_PATH, RESULTS_PATH, MATCHES_PATH, VISUALIZATIONS_PATH
@@ -83,6 +81,7 @@ class SemanticEval():
     """
     default_config = {
         'metrics': [],
+        'report': None,
         'dataset': 'scannet',
         'data_path': '',
         'pairs_path': '',
@@ -110,6 +109,10 @@ class SemanticEval():
             raise Exception("Missing `metrics` param")
         self.metric_orchestrator = MetricsOrchestrator(self.config['metrics'])
 
+        if not self.config['report']:
+            raise Exception("Missing `report` param")
+        self.report = self.config['report'](self.metric_orchestrator)
+
         if self.config['n_workers'] == -1:
             self.config['n_workers'] = mp.cpu_count()
 
@@ -120,130 +123,8 @@ class SemanticEval():
         self.device = torch.device(
             'cuda' if torch.cuda.is_available() else 'cpu')
 
-        self.sam = self.load_sam()
-        self.lpips = self.load_lpips()
-
-    def load_sam(self):
-        """
-        Loads the Segment Anything Model (SAM) from a specified model file.
-
-        The SAM model is loaded from a local directory defined by the BASE_PATH and MODEL_DIR_NAME.
-        The model is then moved to the configured device (GPU or CPU) and set to evaluation mode.
-
-        Returns
-        -------
-        SAM
-            An instance of the SAM model ready for inference.
-        """
-
-        dir_path = BASE_PATH / MODEL_DIR_NAME
-        dir_path.mkdir(parents=True, exist_ok=True)
-
-        file_path = dir_path / self.config['sam_model']
-
-        sam = SAM(file_path)
-        sam.to(self.device).eval()
-
-        return sam
-
-    def load_lpips(self):
-        """
-        Initializes the LPIPS (Learned Perceptual Image Patch Similarity) model.
-
-        Uses the network architecture specified in the configuration (e.g., 'alex', 'vgg').
-        The model is moved to the configured device and set up for similarity evaluation.
-
-        Returns
-        -------
-        lpips.LPIPS
-            An instance of the LPIPS model ready for inference.
-        """
-        fn = lpips.LPIPS(net=self.config['lpips_net'], verbose=False)
-        return fn.to(self.device)
-
-    def get_object_mask(self,
-                        image: List[List[List[int]]],
-                        points: List[List[List[int]]],
-                        batch_size: int = 200) -> Tensor:
-        """
-        Predicts segmentation masks for an image given a list of prompt points in batches.
-
-        This method uses SAM to generate binary object masks corresponding to the provided points.
-        Supports batch prediction to efficiently handle large numbers of prompt points.
-
-        Parameters
-        ----------
-        image : List[List[List[int]]]
-            The input image as a 3D list (height x width x RGB channels).
-        points : List[List[int]]
-            A list of 2D coordinates [x, y] representing prompt points for segmentation.
-        batch_size : int, optional
-            Number of points to process per batch. If -1, processes all points in one batch.
-
-        Returns
-        -------
-        np.ndarray (bool)
-            Array of binary masks generated for the prompted points.
-        """
-        masks = []
-
-        if batch_size == -1:
-            # Se batch_size for -1, processa todos os pontos de uma vez
-            batch_size = len(points)
-
-        # Dividir os pontos em lotes (batches)
-        for i in range(0, len(points), batch_size):
-            batch_points = points[i:i+batch_size]
-
-            # Limpar a memória da GPU antes de cada previsão em batch
-            torch.cuda.empty_cache()
-
-            with torch.no_grad():
-                # Realiza a previsão para o batch de pontos na mesma imagem
-                results = self.sam.predict(
-                    image, points=batch_points, verbose=False)
-
-                # Adicionar as máscaras para cada batch de pontos
-                masks.extend(results[0].masks.data.cpu().numpy())
-
-        return np.array(masks, dtype=bool)
-
-    def get_obj_similarities(self,
-                             img0,
-                             img1,
-                             mask0,
-                             mask1
-                             ) -> float:
-        """
-        Computes the LPIPS perceptual similarity between two cropped image regions defined by masks.
-
-        Crops square regions around each mask on the corresponding image, converts them to tensors,
-        and computes the LPIPS distance indicating perceptual similarity.
-
-        Parameters
-        ----------
-        img0 : np.ndarray
-            The first image array.
-        img1 : np.ndarray
-            The second image array.
-        mask0 : np.ndarray
-            Binary mask defining the object region in the first image.
-        mask1 : np.ndarray
-            Binary mask defining the object region in the second image.
-
-        Returns
-        -------
-        float
-            The LPIPS perceptual similarity score between the two cropped object regions.
-        """
-        with torch.no_grad():
-            cropped_img0 = to_tensor(crop_square_around_mask(img0, mask0))
-            cropped_img1 = to_tensor(crop_square_around_mask(img1, mask1))
-
-            return self.lpips(
-                cropped_img0.to(self.device),
-                cropped_img1.to(self.device)
-            ).item()
+        self.sam = load_sam(self.config['sam_model'], self.device)
+        self.lpips = load_lpips(self.config['lpips_net'], self.device)
 
     def generate_matches(self, matcher_fn):
         """
@@ -305,15 +186,15 @@ class SemanticEval():
                     image0.shape[:2]
                 )
 
-            masks0 = self.get_object_mask(image0, mkpts0)
-            masks1 = self.get_object_mask(image1, mkpts1)
+            masks0 = get_object_mask(self.sam, image0, mkpts0)
+            masks1 = get_object_mask(self.sam, image1, mkpts1)
 
             mask_hits = np.array([mask[int(y), int(x)] if valid else np.False_
                                   for (x, y), valid, mask in
                                   zip(real_mkpts_0_on_1, valid_projections, masks1)], dtype=bool)
 
             lpips_similarity = [
-                self.get_obj_similarities(image0, image1, mask0, mask1)
+                get_obj_similarities(self.lpips, image0, image1, mask0, mask1, self.device)
                 for mask0, mask1 in zip(masks0, masks1)
             ]
 
@@ -371,39 +252,9 @@ class SemanticEval():
 
         matches = []
 
-        lpips_loss = []
-        total_points = 0
-        points_hits = 0
-        masks_hits = 0
-        masks_misses = 0
-        misses = 0
-
         for match_data in self.generate_matches(matcher_fn):
-            total_points += len(match_data['mkpts0'])
-            points_hits += sum(match_data['inliers'])
-            masks_hits += sum(match_data['mask_hits'])
-            misses += sum(~match_data['inliers'])
-            masks_misses += sum(~(match_data['mask_hits']
-                                [match_data['inliers']]))
-
-            lpips_loss.extend(match_data['lpips_loss'])
             matches.append(match_data)
 
-        result = {
-            'points_hit_ratio': points_hits / total_points,  # Percentual de acertos em pontos
-            # Percentual de erros em pontos
-            'points_miss_ratio': 1 - points_hits / total_points,
-            'mask_hit_ratio': masks_hits / total_points,  # Percentual de acertos em máscaras
-            # Percentual de erros em máscaras
-            'mask_miss_ratio': 1 - masks_hits / total_points,
-            # Percentual de erros em máscaras por total de misses
-            'mask_miss_ratio_per_miss': masks_misses / misses,
-            # Percentual de erros em pontos por total de misses
-            'points_miss_ratio_per_miss': 1 - masks_misses / misses,
-            'average_lpips_loss': np.mean(lpips_loss),  # Perda média LPIPS
-        }
-
         np.savez_compressed(fname, all_matches=matches)
-        json.dump(result, rname.open('w'), indent=2)
 
         return fname, rname
