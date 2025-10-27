@@ -132,15 +132,67 @@ class HPatches(BaseDatasetLoader):
                 pairs = pairs[:self.config['max_pairs']]
         return pairs
 
-    def map_point(self, point: Tuple[int, int], pair_index: int, scale_img0: float = 1.0, scale_img1: float = 1.0) -> Tuple[int, int]:
+    def map_point(
+        self,
+        point: Tuple[float, float],
+        pair_index: int,
+        scale_img0: float = 1.0,
+        scale_img1: float = 1.0
+    ) -> tuple[Tuple[float, float], bool]:
+        """
+        Maps a single 2D point from image 0 to image 1 using the ground-truth homography
+        from the HPatches dataset and verifies whether the mapped point lies within the
+        bounds of image 1.
+
+        Parameters
+        ----------
+        point : Tuple[float, float]
+            (x, y) coordinates in image 0.
+        pair_index : int
+            Index of the HPatches image pair to use.
+        scale_img0 : float, optional
+            Scaling factor applied to image 0 before mapping (default is 1.0).
+        scale_img1 : float, optional
+            Scaling factor applied to image 1 before mapping (default is 1.0).
+
+        Returns
+        -------
+        mapped_point : Tuple[float, float]
+            The (x, y) coordinates of the mapped point in image 1 space. If invalid, returns (np.nan, np.nan).
+        valid : bool
+            True if the mapped point lies inside image 1 bounds, False otherwise.
+
+        Notes
+        -----
+        - This function uses the homography `T_0to1` provided by HPatches.
+        - If scaling is applied, the homography is rescaled accordingly using `rescale_homography`.
+        - Image 1 bounds are inferred from the stored pair information.
+        """
         x, y = point
         pair_info = self._pairs[pair_index]
 
-        T_0to1 = pair_info['T_0to1']
+        # --- Retrieve homography and image shape ---
+        T_0to1 = pair_info["T_0to1"]
+        img1_shape = self.read_image(pair_info["image1"]).shape[-2:]  # (H, W)
+
+        # --- Apply scaling if needed ---
         if scale_img0 != 1.0 or scale_img1 != 1.0:
             T_0to1 = rescale_homography(T_0to1, scale_img0, scale_img1)
+            img1_shape = (int(img1_shape[0] * scale_img1), int(img1_shape[1] * scale_img1))
 
-        return apply_homography_to_point(x, y, T_0to1)
+        # --- Apply homography ---
+        x1, y1 = apply_homography_to_point(x, y, T_0to1)
+
+        # --- Check image bounds ---
+        H, W = img1_shape
+        inside = (0 <= x1 < W) and (0 <= y1 < H)
+
+        # --- Return result ---
+        if not inside:
+            return (np.nan, np.nan), False
+
+        return (float(x1), float(y1)), True
+
 
     def get_inliers(
         self,

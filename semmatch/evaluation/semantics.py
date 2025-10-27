@@ -157,9 +157,10 @@ class SemanticEval():
             image0 = self.dataset.read_image(pair['image0'])
             image1 = self.dataset.read_image(pair['image1'])
 
+            scale_img0 = scale_img1 = 1.0
             if self.config['resize'] is not None:
-                image0, scale = resize_long_edge(image0, self.config['resize'])
-                image1, scale = resize_long_edge(image1, self.config['resize'])
+                image0, scale_img0 = resize_long_edge(image0, self.config['resize'])
+                image1, scale_img1 = resize_long_edge(image1, self.config['resize'])
 
             mkpts0, mkpts1 = matcher_fn(image0, image1)
             if isinstance(mkpts0, torch.Tensor):
@@ -167,36 +168,42 @@ class SemanticEval():
                 mkpts1 = mkpts1.cpu().numpy()
 
             if self.config['resize'] is not None:
-                mkpts0 = mkpts0 / scale
-                mkpts1 = mkpts1 / scale
+                mkpts0 = mkpts0 / scale_img0
+                mkpts1 = mkpts1 / scale_img1
 
             inliers = self.dataset.get_inliers(mkpts0, mkpts1, i)
 
             image0 = to_cv(image0)
             image1 = to_cv(image1)
-            depth0 = self.dataset.read_image(pair['depth0'], 'depth')
-            depth1 = self.dataset.read_image(pair['depth1'], 'depth')
 
-            real_mkpts_0_on_1, valid_projections =\
-                project_points_between_cameras(
-                    mkpts0,
-                    depth0, depth1,
-                    pair['K0'], pair['K1'],
-                    pair['T_0to1'],
-                    image0.shape[:2]
+            reprojected_pts = []
+            valid_flags = []
+            for pt0 in mkpts0:
+                mapped_pt, valid = self.dataset.map_point(
+                    tuple(pt0),
+                    pair_index=i,
+                    scale_img0=scale_img0,
+                    scale_img1=scale_img1
                 )
+                reprojected_pts.append(mapped_pt)
+                valid_flags.append(valid)
+
+            real_mkpts_0_on_1 = np.array(reprojected_pts, dtype=np.float32)
+            valid_projections = np.array(valid_flags, dtype=bool)
 
             masks0 = get_object_mask(self.sam, image0, mkpts0)
             masks1 = get_object_mask(self.sam, image1, mkpts1)
 
-            mask_hits = np.array([mask[int(y), int(x)] if valid else np.False_
-                                  for (x, y), valid, mask in
-                                  zip(real_mkpts_0_on_1, valid_projections, masks1)], dtype=bool)
+            mask_hits = np.array([
+                mask[int(y), int(x)] if valid and not np.isnan(x) and not np.isnan(y) else False
+                for (x, y), valid, mask in zip(real_mkpts_0_on_1, valid_projections, masks1)
+            ], dtype=bool)
 
             lpips_similarity = [
                 get_obj_similarities(self.lpips, image0, image1, mask0, mask1, self.device)
                 for mask0, mask1 in zip(masks0, masks1)
             ]
+
 
             yield {
                 'image0': pair['image0'],
