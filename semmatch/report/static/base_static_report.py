@@ -7,7 +7,7 @@ from semmatch.statistics.orchestrator import MetricsOrchestrator
 from semmatch.report.static.modes import ReportMode
 
 
-class BaseStaticReport(meta=ABCMeta):
+class BaseStaticReport(metaclass=ABCMeta):
     def __init__(self, metric_orchestrator: MetricsOrchestrator, mode: Union[int, ReportMode] = ReportMode.SHOW_SUMMARY_ONLY):
         self.metric_orchestrator = metric_orchestrator
         self.mode = ReportMode(mode)
