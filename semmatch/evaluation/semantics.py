@@ -153,7 +153,7 @@ class SemanticEval():
             - 'mask_hits': Boolean array indicating mask-based hit validity.
             - 'lpips_loss': List of LPIPS similarity scores per matched object.
         """
-        for pair in tqdm(self.dataset.pairs, desc='Extraindo correspondências'):
+        for i, pair in tqdm(enumerate(self.dataset.pairs), desc='Extraindo correspondências'):
             image0 = self.dataset.read_image(pair['image0'])
             image1 = self.dataset.read_image(pair['image1'])
 
@@ -170,7 +170,7 @@ class SemanticEval():
                 mkpts0 = mkpts0 / scale
                 mkpts1 = mkpts1 / scale
 
-            inliers = get_inliers(mkpts0, mkpts1, pair['K0'], pair['K1'])
+            inliers = self.dataset.get_inliers(mkpts0, mkpts1, i)
 
             image0 = to_cv(image0)
             image1 = to_cv(image1)
