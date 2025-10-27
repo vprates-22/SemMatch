@@ -1,9 +1,0 @@
-{
-  "points_hit_ratio": 0.7487787857641311,
-  "points_miss_ratio": 0.25122121423586885,
-  "mask_hit_ratio": 0.6517794836008374,
-  "mask_miss_ratio": 0.3482205163991626,
-  "mask_miss_ratio_per_miss": 0.7314814814814815,
-  "points_miss_ratio_per_miss": 0.2685185185185185,
-  "average_lpips_loss": 0.48812022103743236
-}
