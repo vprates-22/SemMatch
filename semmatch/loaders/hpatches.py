@@ -193,7 +193,6 @@ class HPatches(BaseDatasetLoader):
 
         return (float(x1), float(y1)), True
 
-
     def get_inliers(
         self,
         mkpts0: np.ndarray,
@@ -223,12 +222,13 @@ class HPatches(BaseDatasetLoader):
 
         mapped_points = np.zeros_like(mkpts0, dtype=float)
         for i, pt0 in enumerate(mkpts0):
-            mapped_points[i] = self.map_point(
+            point, valid = self.map_point(
                 tuple(pt0),
                 pair_index,
                 scale_img0=scale_img0,
                 scale_img1=scale_img1
             )
+            mapped_points[i] = point
 
         # Compute Euclidean reprojection error
         errors = np.linalg.norm(mapped_points - mkpts1, axis=1)
