@@ -1,2 +1,6 @@
+.pytest_cache
 __pycache__
 models
+env
+*.ipynb
+*.md

@@ -1,7 +1,49 @@
+"""
+Module: cropping
+----------------
+
+This module provides utility functions for cropping image regions based on binary masks.
+It is primarily designed for semantic segmentation or object detection workflows, where
+a localized object needs to be cropped and resized around its mask for further processing,
+such as similarity computation or patch-based classification.
+
+Functions
+---------
+crop_square_around_mask(image, mask, output_size=(256, 256))
+    Extracts a square crop around the binary mask of an object and resizes it to a fixed size.
+"""
+
 import cv2
 import numpy as np
 
+
 def crop_square_around_mask(image, mask, output_size=(256, 256)):
+    """
+    Crop a square region around the binary mask in the image and resize it to a given size.
+
+    This function finds the bounding box of the binary mask, expands it into a square
+    centered on the object, and resizes the crop to the specified output dimensions.
+    If the crop exceeds image bounds, the image is padded with white (255) pixels.
+
+    Parameters
+    ----------
+    image : np.ndarray
+        The input image (H, W, C) or (H, W) where the object is located.
+    mask : np.ndarray
+        Binary mask (H, W) indicating the location of the object to crop.
+    output_size : tuple of int, optional
+        The desired output size (height, width) of the cropped image. Default is (256, 256).
+
+    Returns
+    -------
+    np.ndarray
+        A square image patch cropped around the object and resized to the specified dimensions.
+
+    Raises
+    ------
+    ValueError
+        If the provided mask does not contain any foreground pixels.
+    """
     # Ensure mask is boolean
     mask = np.asarray(mask).astype(bool)
 
@@ -37,9 +79,9 @@ def crop_square_around_mask(image, mask, output_size=(256, 256)):
 
     # Pad image if needed
     if any([pad_top, pad_bottom, pad_left, pad_right]):
-        image = np.pad(image, 
-                       ((pad_top, pad_bottom), (pad_left, pad_right), (0, 0)) if image.ndim == 3 else 
-                       ((pad_top, pad_bottom), (pad_left, pad_right)), 
+        image = np.pad(image,
+                       ((pad_top, pad_bottom), (pad_left, pad_right), (0, 0)) if image.ndim == 3 else
+                       ((pad_top, pad_bottom), (pad_left, pad_right)),
                        mode='constant', constant_values=255)
 
     # Adjust crop after padding

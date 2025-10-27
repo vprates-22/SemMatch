@@ -4,6 +4,7 @@ BASE_PATH = Path(__file__).parent.parent
 
 DATA_PATH = BASE_PATH / 'data/'
 OUTPUT_PATH = BASE_PATH / 'output/'
+MODEL_DIR_NAME = BASE_PATH / 'models/'
 
 RESULTS_PATH = OUTPUT_PATH / 'reports/'
 MATCHES_PATH = OUTPUT_PATH / 'matches/'

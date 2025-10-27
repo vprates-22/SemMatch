@@ -1,4 +1,35 @@
+"""
+Module: visualization.matches
+-----------------------------------
+
+This module provides utilities for visualizing keypoint matches between image pairs, 
+including drawing keypoints, visualizing inliers/outliers, and saving annotated 
+match images for evaluation and analysis purposes.
+
+Functions:
+----------
+- plot_matches_parallel(args_plot):
+    Plots and saves matches for a single image pair, coloring inliers and outliers 
+    differently.
+
+- plot_keypoints(keypoints0, keypoints1, ...):
+    Plots keypoints overlaid on the input images, supporting custom colors and sizes.
+
+- plot_matches(mkpts0, mkpts1, ...):
+    Draws connecting lines between matched keypoints across two images, optionally 
+    using per-match colors and alpha transparency.fu
+
+Usage:
+------
+These utilities are primarily used in the context of keypoint detection and 
+matching pipelines, where visualizing the quality of matches and inlier distributions 
+is crucial for qualitative evaluation. Typical usage involves calling 
+`plot_matches_parallel` in a loop over image pairs, optionally using multiprocessing.
+"""
+
 import os
+from typing import Tuple, Union, Optional, List
+
 import cv2
 import torch
 import numpy as np
@@ -6,35 +37,34 @@ import matplotlib.pyplot as plt
 
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
-from typing import Tuple, Union, Optional, List
 from matplotlib.patches import ConnectionPatch
 from ..helpers import get_inliers
-from .utils import DEFAULT_COLORS, save, plot_pair
+from ..utils.visualization import DEFAULT_COLORS, save, plot_pair
+
 
 def plot_matches_parallel(args_plot: Tuple[int, dict, Union[np.ndarray, torch.Tensor],
                                            Union[np.ndarray, torch.Tensor], str]) -> bool:
     """
-    Plot matched keypoints between two images and save the result.
+    Plot matched keypoints between two images and save the visualization.
+
+    This function reads the image pair, separates inlier and outlier matches using
+    epipolar geometry (via `get_inliers`), visualizes both categories with different 
+    colors, and saves the result to the specified output directory.
 
     Parameters
     ----------
     args_plot : tuple
-        A tuple containing the following elements:
-        pair_idx : int
-            Index of the image pair.
-        pair : dict
-            Dictionary with keys 'image0', 'image1', 'K0', 'K1' pointing to image paths and intrinsics.
-        mkpts0 : np.ndarray or torch.Tensor
-            Matched keypoints from the first image.
-        mkpts1 : np.ndarray or torch.Tensor
-            Matched keypoints from the second image.
-        out_folder : str
-            Output folder to save the visualization.
+        A tuple containing the following:
+            - pair_idx (int): Index of the image pair.
+            - pair (dict): Dictionary with keys 'image0', 'image1', 'K0', 'K1' for paths and intrinsics.
+            - mkpts0 (np.ndarray or torch.Tensor): Matched keypoints from image0.
+            - mkpts1 (np.ndarray or torch.Tensor): Matched keypoints from image1.
+            - out_folder (str): Directory where the visualization image will be saved.
 
     Returns
     -------
     bool
-        True if the plot was successfully generated and saved.
+        True if the image was successfully saved.
     """
     pair_idx, pair, mkpts0, mkpts1, out_folder = args_plot
     out_path = os.path.join(out_folder, f'{pair_idx}.png')
@@ -55,33 +85,41 @@ def plot_matches_parallel(args_plot: Tuple[int, dict, Union[np.ndarray, torch.Te
 
     return True
 
+
 def plot_keypoints(keypoints0: Optional[Union[np.ndarray, torch.Tensor]] = None,
-                   keypoints1: Optional[Union[np.ndarray, torch.Tensor]] = None,
+                   keypoints1: Optional[Union[np.ndarray,
+                                              torch.Tensor]] = None,
                    color: Optional[str] = None,
                    kps_size: int = 5,
                    all_colors: Optional[List] = None,
                    **kwargs) -> Tuple[Figure, List[Axes]]:
     """
-    Plot keypoints on one or both images.
+    Overlay keypoints on one or both images in a side-by-side plot.
+
+    Useful for visualizing detected keypoints in image matching tasks. If a default
+    color is not provided, keypoints will be colorized using a rainbow colormap.
 
     Parameters
     ----------
     keypoints0 : np.ndarray or torch.Tensor, optional
-        Keypoints for the first image.
+        Keypoints for the first (left) image.
     keypoints1 : np.ndarray or torch.Tensor, optional
-        Keypoints for the second image.
+        Keypoints for the second (right) image.
     color : str, optional
-        Name of default color to use from DEFAULT_COLORS.
+        Key to a color in DEFAULT_COLORS (e.g., 'g', 'r', 'b'). If not set, uses a rainbow map.
     kps_size : int, optional
-        Size of the keypoints in the plot. Default is 5.
+        Size of the keypoints (scatter dots). Default is 5.
     all_colors : list, optional
-        List of colors for each keypoint.
+        List of custom colors for individual keypoints.
     **kwargs : dict
-        Additional keyword arguments passed to matplotlib `scatter`.
-    
+        Extra keyword arguments passed to `matplotlib.pyplot.scatter`.
+
     Returns
     -------
-    None
+    fig : matplotlib.figure.Figure
+        The figure containing the plotted images and keypoints.
+    ax : list of matplotlib.axes.Axes
+        The axes corresponding to each image.
     """
     rainbow = plt.get_cmap('hsv')
 
@@ -100,10 +138,12 @@ def plot_keypoints(keypoints0: Optional[Union[np.ndarray, torch.Tensor]] = None,
 
         n = len(keypoints)
         colors = all_colors if all_colors is not None else \
-                 [DEFAULT_COLORS[color]] * n if color in DEFAULT_COLORS else \
-                 [rainbow(i / n) for i in range(n)]
+            [DEFAULT_COLORS[color]] * n if color in DEFAULT_COLORS else \
+            [rainbow(i / n) for i in range(n)]
 
-        ax[idx].scatter(keypoints[:, 0], keypoints[:, 1], s=kps_size, c=colors, **kwargs)
+        ax[idx].scatter(keypoints[:, 0], keypoints[:, 1],
+                        s=kps_size, c=colors, **kwargs)
+
 
 def plot_matches(mkpts0: Union[np.ndarray, torch.Tensor],
                  mkpts1: Union[np.ndarray, torch.Tensor],
@@ -111,20 +151,23 @@ def plot_matches(mkpts0: Union[np.ndarray, torch.Tensor],
                  alphas: Optional[List[float]] = None,
                  **kwargs) -> None:
     """
-    Draw lines connecting matched keypoints between two images.
+    Draw connecting lines between matched keypoints on a side-by-side image plot.
+
+    Can be used to differentiate inliers and outliers visually by using different colors.
 
     Parameters
     ----------
     mkpts0 : np.ndarray or torch.Tensor
-        Matched keypoints in the first image.
+        Matched keypoints in the first (left) image.
     mkpts1 : np.ndarray or torch.Tensor
-        Matched keypoints in the second image.
-    color : str or list, optional
-        Color name or list of colors for the match lines. Default is 'b' (blue).
+        Corresponding matched keypoints in the second (right) image.
+    color : str or list or np.ndarray, optional
+        Match line color(s). If a color string (e.g., 'g', 'r', 'b') is passed and exists
+        in DEFAULT_COLORS, that color is used. Otherwise, a rainbow colormap is used per line.
     alphas : list of float, optional
-        Per-match alpha transparency values.
+        Transparency values (0.0–1.0) for each line. Useful for fading weak matches.
     **kwargs : dict
-        Additional arguments passed to `ConnectionPatch`.
+        Extra arguments passed to `matplotlib.patches.ConnectionPatch`.
 
     Returns
     -------
