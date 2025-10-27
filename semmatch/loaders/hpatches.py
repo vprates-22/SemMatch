@@ -142,6 +142,8 @@ class HPatches(BaseDatasetLoader):
 
         return apply_homography_to_point(x, y, T_0to1)
 
+    def get_inliers(self, )
+
     @staticmethod
     def build_intrinsic_matrixes(all_info: List[str]) -> NDArray:
         """

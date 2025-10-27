@@ -29,7 +29,7 @@ import torchvision
 import numpy as np
 
 import poselib
-from .utils.evaluation import intrinsics_to_camera
+from semmatch.utils.evaluation import intrinsics_to_camera
 
 
 def load_image(path, gray=False) -> torch.Tensor:

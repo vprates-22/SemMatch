@@ -28,6 +28,8 @@ from ultralytics import SAM
 
 from semmatch.utils.evaluation import project_points_between_cameras
 
+from semmatch.statistics.orchestrator import MetricsOrchestrator
+
 from semmatch.loaders import get_loader
 from semmatch.helpers import to_cv, get_inliers, to_tensor
 from semmatch.utils.cropping import crop_square_around_mask
@@ -80,6 +82,7 @@ class SemanticEval():
 
     """
     default_config = {
+        'metrics': [],
         'dataset': 'scannet',
         'data_path': '',
         'pairs_path': '',
@@ -103,12 +106,16 @@ class SemanticEval():
     def __init__(self, config: dict = {}):
         self.config = combine_dicts(self.default_config, config)
 
+        if not self.config['metrics']:
+            raise Exception("Missing `metrics` param")
+        self.metric_orchestrator = MetricsOrchestrator(self.config['metrics'])
+
         if self.config['n_workers'] == -1:
             self.config['n_workers'] = mp.cpu_count()
 
-        dataset_config = {k: v for k,
+        loaders_config = {k: v for k,
                           v in self.config.items() if k in DATASET_CONFIG_KEYS}
-        self.dataset = get_loader(self.config['dataset'])(dataset_config)
+        self.dataset = get_loader(self.config['dataset'])(loaders_config)
 
         self.device = torch.device(
             'cuda' if torch.cuda.is_available() else 'cpu')

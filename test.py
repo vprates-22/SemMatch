@@ -7,6 +7,7 @@ from pathlib import Path
 from functools import partial
 from semmatch.evaluation.semantics import SemanticEval
 # from semmatch.report.server import run_report
+from semmatch.statistics.metrics import *
 
 dev = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -38,6 +39,7 @@ if __name__ == "__main__":
     match_fn = partial(match_reasoning_model, model=model)
 
     semMatch = SemanticEval({
+        'metrics': [Accuracy, F1Score, FalsePositiveRatio, Precision, Recall]
         'sam_model': 'sam2.1_l.pt',
         'data_path': 'hpatches',
         'dataset': 'hpatches',
