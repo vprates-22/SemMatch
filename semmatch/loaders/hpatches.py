@@ -142,7 +142,7 @@ class HPatches(BaseDatasetLoader):
 
         return apply_homography_to_point(x, y, T_0to1)
 
-    def estimate_hpatches_inliers(
+    def get_inliers(
         self,
         mkpts0: np.ndarray,
         mkpts1: np.ndarray,
