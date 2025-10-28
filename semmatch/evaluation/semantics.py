@@ -277,6 +277,10 @@ class SemanticEval():
         for match_data in self.generate_matches(matcher_fn):
             matches.append(match_data)
 
+        self.metric_orchestrator.compute()
+
+        self.report.generate_report()
+
         np.savez_compressed(fname, all_matches=matches)
 
         return fname, rname
