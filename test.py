@@ -6,7 +6,7 @@ import numpy as np
 from pathlib import Path
 from functools import partial
 from semmatch.evaluation.semantics import SemanticEval
-# from semmatch.report.server import run_report
+from semmatch.report.dynamic.server import run_report
 from semmatch.statistics.metrics import *
 from semmatch.report.static.reports import *
 
@@ -53,5 +53,5 @@ if __name__ == "__main__":
     # run_report({
     #     'sam_model': 'sam2.1_l.pt',
     #     'matches_file_path': Path('SemMatch/output/matches/test_matches.npz'),
-    #     'results_file_path': Path('SemMatch/output/reports/test_results.json')
+    #     # 'results_file_path': Path('SemMatch/output/reports/test_results.json')
     # }, port=6500)

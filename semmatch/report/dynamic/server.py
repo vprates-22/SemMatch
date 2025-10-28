@@ -83,7 +83,7 @@ def run_report(config: dict = None, host='localhost', port=5000, debug=True) -> 
     """
     factory = ReportFactory()
     factory.config_routes(
-        ResultRoutes(config or {}),
+        # ResultRoutes(config or {}),
         VisualizationRoutes(config or {}),
     )
 

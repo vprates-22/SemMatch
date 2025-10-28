@@ -23,12 +23,12 @@ import matplotlib.colors as mcolors
 
 from numpy.typing import NDArray
 from flask import Blueprint, Response, request, send_file
-from ...visualization.masks import plot_masks
-from ...visualization.matches import plot_matches
+from semmatch.visualization.masks import plot_masks
+from semmatch.visualization.matches import plot_matches
 
-from ...utils.io import combine_dicts
-from ...utils.sam import load_sam, get_object_mask
-from ...utils.visualization import plot_pair, save, DEFAULT_COLORS
+from semmatch.utils.io import combine_dicts
+from semmatch.utils.sam import load_sam, get_object_mask
+from semmatch.utils.visualization import plot_pair, save, DEFAULT_COLORS
 
 matplotlib.use('Agg')
 
@@ -246,6 +246,8 @@ class VisualizationRoutes:
         flask.Response
             PNG image with both masks overlaid.
         """
+        point_match = int(point_match)
+        
         img0, img1, mkpts0, mkpts1, inliers =\
             self._load_images_and_keypoints(data, point_match)
 
@@ -286,7 +288,7 @@ class VisualizationRoutes:
 
         # Carregamento das imagens
         img0, img1, mkpts0, mkpts1, inliers =\
-            self._load_images_and_keypoints(data, point_match)
+            self._load_images_and_keypoints(data)
 
         mask0, _ = self._get_masks_for_indices(
             [point_match], (img0, img1), (mkpts0[None], mkpts1[None]))[0]
