@@ -27,8 +27,9 @@ from semmatch.utils.evaluation import project_points_between_cameras
 
 from semmatch.statistics.orchestrator import MetricsOrchestrator
 
+from semmatch.statistics.base_update_data import BaseMetricUpdateData
 from semmatch.loaders import get_loader
-from semmatch.helpers import to_cv, get_inliers
+from semmatch.helpers import to_cv
 from semmatch.utils.sam import load_sam, get_object_mask
 from semmatch.utils.lpips import load_lpips, get_obj_similarities
 from semmatch.utils.io import combine_dicts, resize_long_edge
@@ -159,8 +160,10 @@ class SemanticEval():
 
             scale_img0 = scale_img1 = 1.0
             if self.config['resize'] is not None:
-                image0, scale_img0 = resize_long_edge(image0, self.config['resize'])
-                image1, scale_img1 = resize_long_edge(image1, self.config['resize'])
+                image0, scale_img0 = resize_long_edge(
+                    image0, self.config['resize'])
+                image1, scale_img1 = resize_long_edge(
+                    image1, self.config['resize'])
 
             mkpts0, mkpts1 = matcher_fn(image0, image1)
             if isinstance(mkpts0, torch.Tensor):
@@ -195,15 +198,27 @@ class SemanticEval():
             masks1 = get_object_mask(self.sam, image1, mkpts1)
 
             mask_hits = np.array([
-                mask[int(y), int(x)] if valid and not np.isnan(x) and not np.isnan(y) else False
+                mask[int(y), int(x)] if valid and not np.isnan(
+                    x) and not np.isnan(y) else False
                 for (x, y), valid, mask in zip(real_mkpts_0_on_1, valid_projections, masks1)
             ], dtype=bool)
 
             lpips_similarity = [
-                get_obj_similarities(self.lpips, image0, image1, mask0, mask1, self.device)
+                get_obj_similarities(self.lpips, image0,
+                                     image1, mask0, mask1, self.device)
                 for mask0, mask1 in zip(masks0, masks1)
             ]
 
+            self.metric_orchestrator.update(BaseMetricUpdateData(
+                image0=pair['image0'],
+                image1=pair['image1'],
+                mkpts0=mkpts0,
+                mkpts1=mkpts1,
+                inliers=inliers,
+                mask_hits=mask_hits,
+                lpips_similarity=lpips_similarity,
+                valid_projections=valid_projections
+            ))
 
             yield {
                 'image0': pair['image0'],

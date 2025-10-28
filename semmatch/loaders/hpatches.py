@@ -222,7 +222,7 @@ class HPatches(BaseDatasetLoader):
 
         mapped_points = np.zeros_like(mkpts0, dtype=float)
         for i, pt0 in enumerate(mkpts0):
-            point, valid = self.map_point(
+            point, _ = self.map_point(
                 tuple(pt0),
                 pair_index,
                 scale_img0=scale_img0,
