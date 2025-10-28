@@ -115,27 +115,27 @@ class MetricsOrchestrator:
 
         return class_to_object
 
-    def _make_frozen_copy(self, data: UpdateData):
-        if not is_dataclass(data):
-            raise TypeError("Object must be a dataclass instance")
+    # def _make_frozen_copy(self, data: UpdateData):
+    #     if not is_dataclass(data):
+    #         raise TypeError("Object must be a dataclass instance")
 
-        FrozenCls = make_dataclass(
-            f"Frozen{type(data).__name__}",
-            fields=[(f.name, f.type) for f in fields(data)],
-            bases=(dataclass(type(data)),),
-            frozen=True,
-        )
-        return FrozenCls(**asdict(data))
+    #     FrozenCls = make_dataclass(
+    #         f"Frozen{type(data).__name__}",
+    #         fields=[(f.name, f.type) for f in fields(data)],
+    #         bases=(dataclass(type(data), frozen=True)),
+    #         frozen=True,
+    #     )
+    #     return FrozenCls(**asdict(data))
 
     def update(self, data: UpdateData) -> None:
-        frozen_data = self._make_frozen_copy(data)
+        # frozen_data = self._make_frozen_copy(data)
         p0 = Path(data.image0)
         p1 = Path(data.image1)
 
         self.pairs.append([p0.parent.name + '/' +  p0.stem, p1.parent.name + '/' +  p1.stem])
 
         for metric in self.all_metrics:
-            self.class_to_object[metric].update(frozen_data)
+            self.class_to_object[metric].update(data)
 
     def compute(self) -> None:
         for metric in self.all_metrics:

@@ -112,7 +112,7 @@ class SemanticEval():
 
         if not self.config['report']:
             raise Exception("Missing `report` param")
-        self.report = self.config['report'](self.metric_orchestrator)
+        self.report = self.config['report'](self.metric_orchestrator, 0)
 
         if self.config['n_workers'] == -1:
             self.config['n_workers'] = mp.cpu_count()
@@ -216,7 +216,7 @@ class SemanticEval():
                 mkpts1=mkpts1,
                 inliers=inliers,
                 mask_hits=mask_hits,
-                lpips_similarity=lpips_similarity,
+                lpips_loss=lpips_similarity,
                 valid_projections=valid_projections
             ))
 

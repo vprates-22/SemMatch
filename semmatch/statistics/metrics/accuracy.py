@@ -7,7 +7,7 @@ class Accuracy(BaseMetric):
 
     def update(self, data: UpdateData) -> None:
         pair_hit = data.inliers.sum()
-        pair_total = data.mkpts0.size(0)
+        pair_total = data.mkpts0.size
 
         accuracy = (pair_hit / pair_total) if pair_total > 0 else None
         self._raw_results.append(accuracy)

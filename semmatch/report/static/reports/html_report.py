@@ -9,10 +9,10 @@ class HTMLReport(BaseStaticReport):
     def __init__(self, orchestrator, mode=ReportMode.SHOW_SUMMARY_ONLY):
         super().__init__(orchestrator, mode)
 
-        env = Environment(loader=FileSystemLoader('.'))
-        self.template = env.get_template('template/index.html')
+        env = Environment(loader=FileSystemLoader('SemMatch/semmatch/report/static/reports/template'))
+        self.template = env.get_template('index.html')
 
-    def generate_report(self):
+    def generate_report(self, generate_file:bool = True):
         tables = []
         summary = self.generate_summary_table()
 
@@ -38,9 +38,11 @@ class HTMLReport(BaseStaticReport):
             # images=images
         )
 
+        if generate_file:
+            file_name = f"report {time_str}.html"
+            with open(file_name, "w") as f:
+                f.write(html)
 
-        file_name = f"report {time_str}.html"
-        with open(file_name, "w") as f:
-            f.write(html)
-
-        return file_name
+            return file_name
+    
+        return html

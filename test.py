@@ -41,11 +41,11 @@ if __name__ == "__main__":
 
     semMatch = SemanticEval({
         'metrics': [Accuracy, F1Score, FalsePositiveRatio, Precision, Recall],
-        'report': CLIReport,
+        'report': PDFReport,
         'sam_model': 'sam2.1_l.pt',
         'data_path': 'hpatches',
         'dataset': 'hpatches',
-        'max_pairs': 15
+        'max_pairs': 5
     })
 
     semMatch.extract_and_save_matches(match_fn, 'test')

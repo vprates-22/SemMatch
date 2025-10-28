@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from xhtml2pdf import pisa
 
 from semmatch.report.static.modes import ReportMode
@@ -12,9 +14,10 @@ class PDFReport(BaseStaticReport):
         self.html_report = HTMLReport(orchestrator, mode)
 
     def generate_report(self):
-        html_source = self.html_report.generate_report()
+        html_source = self.html_report.generate_report(False)
 
-        with open("test.pdf", "w+b") as result_file:
+        time_str = datetime.now().strftime("%d-%m-%Y, %H:%M:%S")
+        with open(f"report {time_str}.pdf", "w+b") as result_file:
             pisa.CreatePDF(
                 html_source,
                 dest=result_file,

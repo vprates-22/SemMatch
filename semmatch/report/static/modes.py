@@ -2,7 +2,7 @@ from enum import Enum, auto
 
 
 class ReportMode(Enum):
-    SHOW_ALL_RESULTS = auto()
+    SHOW_ALL_RESULTS = 0
     SHOW_RELEVANT_RESULTS = auto()
     SHOW_SUMMARY_ONLY = auto()
     SHOW_ERRORS_ONLY = auto()

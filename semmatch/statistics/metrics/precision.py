@@ -7,7 +7,7 @@ class Precision(BaseMetric):
 
     def update(self, data: UpdateData) -> None:
         pair_hit = data.inliers.sum()
-        pair_total = data.mkpts0.size()
+        pair_total = data.mkpts0.size
 
         self._raw_results.append(pair_hit / pair_total)
 
