@@ -4,3 +4,4 @@ models
 env
 *.ipynb
 *.md
+data/*/*

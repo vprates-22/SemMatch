@@ -22,19 +22,21 @@ import torch
 import numpy as np
 from tqdm import tqdm
 from torch import Tensor
+from typing import Dict, Any, Union
 
-from semmatch.utils.evaluation import project_points_between_cameras
+
+from semmatch.utils.geometry import project_points_between_cameras
 
 from semmatch.statistics.orchestrator import MetricsOrchestrator
 
 from semmatch.statistics.base_update_data import BaseMetricUpdateData
-from semmatch.loaders import get_loader
+from semmatch.configs.evaluator_config import Config, EvaluatorConfig
+from semmatch.datasets import get_dataset
 from semmatch.helpers import to_cv
-from semmatch.utils.sam import load_sam, get_object_mask
-from semmatch.utils.lpips import load_lpips, get_obj_similarities
-from semmatch.utils.io import combine_dicts, resize_long_edge
-from semmatch.loaders.base_dataset_loader import DATASET_CONFIG_KEYS
+from semmatch.utils.image import resize_long_edge
+from semmatch.datasets.base import DATASET_CONFIG_KEYS
 from semmatch.settings import BASE_PATH, RESULTS_PATH, MATCHES_PATH, VISUALIZATIONS_PATH
+from semmatch.utils.models import load_sam, get_object_mask, load_lpips, get_obj_similarities
 
 MODEL_DIR_NAME = 'models'
 
@@ -80,52 +82,30 @@ class SemanticEval():
     - Evaluation Summary: Saved as a `.json` file with hit/miss ratios and LPIPS statistics.
 
     """
-    default_config = {
-        'metrics': [],
-        'report': None,
-        'dataset': 'scannet',
-        'data_path': '',
-        'pairs_path': '',
-        'pose_estimator': 'poselib',
-        'cache_images': False,
-        'ransac_thresholds': [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5, 6.0],
-        'pose_thresholds': [5, 10, 20],
-        'max_pairs': -1,
-        'results_path': RESULTS_PATH,
-        'matches_path': MATCHES_PATH,
-        'visualization_path': VISUALIZATIONS_PATH,
-        'n_workers': 8,
-        'resize': None,
-        'detector_only': False,
-        'sam_model': 'sam2.1_l.pt',
-        'lpips_net': 'alex',
-        'url': '',
-        'url_download_extension': ''
-    }
 
-    def __init__(self, config: dict = {}):
-        self.config = combine_dicts(self.default_config, config)
+    def __init__(self, config: Union[Config, Dict[str, Any]] = None):
+        self.config = EvaluatorConfig(config)
 
-        if not self.config['metrics']:
+        if not self.config.metrics:
             raise Exception("Missing `metrics` param")
-        self.metric_orchestrator = MetricsOrchestrator(self.config['metrics'])
+        self.metric_orchestrator = MetricsOrchestrator(self.config.metrics)
 
-        if not self.config['report']:
+        if not self.config.report:
             raise Exception("Missing `report` param")
-        self.report = self.config['report'](self.metric_orchestrator, 0)
+        self.report = self.config.report(self.metric_orchestrator, 0)
 
-        if self.config['n_workers'] == -1:
-            self.config['n_workers'] = mp.cpu_count()
+        if self.config.n_workers == -1:
+            self.config.n_workers = mp.cpu_count()
 
         loaders_config = {k: v for k,
                           v in self.config.items() if k in DATASET_CONFIG_KEYS}
-        self.dataset = get_loader(self.config['dataset'])(loaders_config)
+        self.dataset = get_dataset(self.config.dataset)(loaders_config)
 
         self.device = torch.device(
             'cuda' if torch.cuda.is_available() else 'cpu')
 
-        self.sam = load_sam(self.config['sam_model'], self.device)
-        self.lpips = load_lpips(self.config['lpips_net'], self.device)
+        self.sam = load_sam(self.config.sam_model, self.device)
+        self.lpips = load_lpips(self.config.lpips_net, self.device)
 
     def generate_matches(self, matcher_fn):
         """
@@ -159,49 +139,49 @@ class SemanticEval():
             image1 = self.dataset.read_image(pair['image1'])
 
             scale_img0 = scale_img1 = 1.0
-            if self.config['resize'] is not None:
+            if self.config.resize is not None:
                 image0, scale_img0 = resize_long_edge(
-                    image0, self.config['resize'])
+                    image0, self.config.resize)
                 image1, scale_img1 = resize_long_edge(
-                    image1, self.config['resize'])
+                    image1, self.config.resize)
 
             mkpts0, mkpts1 = matcher_fn(image0, image1)
             if isinstance(mkpts0, torch.Tensor):
                 mkpts0 = mkpts0.cpu().numpy()
                 mkpts1 = mkpts1.cpu().numpy()
 
-            if self.config['resize'] is not None:
+            if self.config.resize is not None:
                 mkpts0 = mkpts0 / scale_img0
                 mkpts1 = mkpts1 / scale_img1
-
-            inliers = self.dataset.get_inliers(mkpts0, mkpts1, i)
 
             image0 = to_cv(image0)
             image1 = to_cv(image1)
 
-            reprojected_pts = []
-            valid_flags = []
-            for pt0 in mkpts0:
-                mapped_pt, valid = self.dataset.map_point(
-                    tuple(pt0),
-                    pair_index=i,
-                    scale_img0=scale_img0,
-                    scale_img1=scale_img1
-                )
-                reprojected_pts.append(mapped_pt)
-                valid_flags.append(valid)
+            inliers = self.dataset.get_inliers(mkpts0, mkpts1, i)
 
-            real_mkpts_0_on_1 = np.array(reprojected_pts, dtype=np.float32)
-            valid_projections = np.array(valid_flags, dtype=bool)
+            # reprojected_pts = []
+            # valid_flags = []
+            # for pt0 in mkpts0:
+            #     mapped_pt, valid = self.dataset.map_point(
+            #         tuple(pt0),
+            #         pair_index=i,
+            #         scale_img0=scale_img0,
+            #         scale_img1=scale_img1
+            #     )
+            #     reprojected_pts.append(mapped_pt)
+            #     valid_flags.append(valid)
 
-            masks0 = get_object_mask(self.sam, image0, mkpts0)
-            masks1 = get_object_mask(self.sam, image1, mkpts1)
+            # real_mkpts_0_on_1 = np.array(reprojected_pts, dtype=np.float32)
+            # valid_projections = np.array(valid_flags, dtype=bool)
 
-            mask_hits = np.array([
-                mask[int(y), int(x)] if valid and not np.isnan(
-                    x) and not np.isnan(y) else False
-                for (x, y), valid, mask in zip(real_mkpts_0_on_1, valid_projections, masks1)
-            ], dtype=bool)
+            # masks0 = get_object_mask(self.sam, image0, mkpts0)
+            # masks1 = get_object_mask(self.sam, image1, mkpts1)
+
+            # mask_hits = np.array([
+            #     mask[int(y), int(x)] if valid and not np.isnan(
+            #         x) and not np.isnan(y) else False
+            #     for (x, y), valid, mask in zip(real_mkpts_0_on_1, valid_projections, masks1)
+            # ], dtype=bool)
 
             lpips_similarity = [
                 get_obj_similarities(self.lpips, image0,
@@ -254,14 +234,14 @@ class SemanticEval():
         if name == '':
             name = matcher_fn.__name__
 
-        matches_path = Path(self.config['matches_path'])
+        matches_path = Path(self.config.matches_path)
 
         fname = matches_path / f'{name}_matches.npz'
 
         if not matches_path.exists():
             matches_path.mkdir(parents=True, exist_ok=True)
 
-        results_path = Path(self.config['results_path'])
+        results_path = Path(self.config.results_path)
 
         if not results_path.exists():
             results_path.mkdir(parents=True, exist_ok=True)

@@ -18,7 +18,11 @@ and provides a Flask Blueprint for easy registration of its routes.
 
 import json
 import numpy as np
+from typing import Dict, Any, Union
+
 from flask import Blueprint, render_template
+
+from semmatch.configs.result_routes_config import Config, ResultRoutesConfig
 
 
 class ResultRoutes:
@@ -50,18 +54,11 @@ class ResultRoutes:
     individual_data : np.ndarray
         Loaded NumPy array with individual experiment data.
     """
-    default_config = {
-        'arr_name': 'all_matches',
-        'results_file_path': 'results.json',
-    }
 
-    def __init__(self, config: dict = None):
-        if config is None:
-            config = {}
+    def __init__(self, config: Union[Config, Dict[str, Any]] = None):
+        self.config = ResultRoutesConfig(config)
 
-        self.config = {**self.default_config, **config}
-
-        if not self.config['results_file_path']:
+        if not self.config.results_file_path:
             raise Exception('Missing "results_file_path"')
 
         self._load_data()
@@ -78,12 +75,12 @@ class ResultRoutes:
         - self.general_results (dict)
         - self.individual_data (np.ndarray)
         """
-        results_file = self.config['results_file_path']
+        results_file = self.config.results_file_path
         with open(results_file, 'r') as f:
             self.general_results = json.load(f)
 
-        self.individual_data = np.load(self.config['matches_file_path'], allow_pickle=True)[
-            self.config['arr_name']]
+        self.individual_data = np.load(self.config.matches_file_path, allow_pickle=True)[
+            self.config.arr_name]
 
     def _routes(self):
         """

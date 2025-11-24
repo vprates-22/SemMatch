@@ -1,0 +1,112 @@
+[MASTER]
+# Caminhos a serem ignorados
+ignore=venv,tests,migrations
+ignore-patterns=test_.*,.*_test.py
+
+# Permite o uso de docstrings em formato Google, NumPy ou reStructuredText
+extension-pkg-whitelist=
+load-plugins=pylint.extensions.docparams,pylint.extensions.typing
+
+# Máximo de linhas por módulo
+max-module-lines=1000
+
+# Permitir imports relativos
+allow-relative-imports=yes
+
+# Relatório geral
+reports=yes
+score=yes
+
+
+[MESSAGES CONTROL]
+# Desabilitar apenas regras que geram muito ruído ou são excessivas
+disable=
+    ; C0114, # Missing module docstring
+    ; C0115, # Missing class docstring
+    ; C0116, # Missing function docstring
+    ; R0903, # Too few public methods (para classes modelo, ex: Django)
+    ; W0511, # TODO comments
+    ; R0801, # Similar lines in files (análise de duplicação)
+
+enable=
+    W0611, # Unused import
+    W0612, # Unused variable
+    W0702, # Bare except
+    W1201, # Use % formatting in logging functions
+    W1508, # Duplicate key in dict
+    W1514, # Using open without specifying encoding
+    R1705, # Unnecessary "else" after "return"
+    R1732, # Consider using 'with' for resource-allocating operations
+    R0914, # Too many local variables
+
+
+[BASIC]
+good-names=i,j,k,ex,_,pk,id
+bad-names=foo,bar,baz,temp
+variable-rgx=[a-z_][a-z0-9_]{2,30}$
+argument-rgx=[a-z_][a-z0-9_]{2,30}$
+attr-rgx=[a-z_][a-z0-9_]{2,30}$
+function-rgx=[a-z_][a-z0-9_]{2,40}$
+class-rgx=[A-Z_][a-zA-Z0-9]+$
+const-rgx=([A-Z_][A-Z0-9_]*)|(__.*__)$
+module-rgx=(([a-z_][a-z0-9_]*)|([A-Z][a-zA-Z0-9]+))$
+
+# Máximo de argumentos por função
+max-args=6
+
+# Máximo de atributos por classe
+max-attributes=10
+
+[FORMAT]
+max-line-length=50
+indent-string='    '
+expected-line-ending-format=LF
+
+
+[DESIGN]
+# Controle de complexidade
+max-parents=7
+max-returns=6
+max-branches=12
+max-statements=50
+max-nested-blocks=5
+min-public-methods=1
+
+
+[TYPECHECK]
+# Ignora erros em bibliotecas externas
+ignored-modules=requests,numpy,pandas,torch,django
+ignored-classes=SQLObject,ForeignKey
+
+# Checa tipagem quando disponível
+ignore-mixin-members=yes
+
+
+[SIMILARITIES]
+min-similarity-lines=6
+
+
+[STRING]
+check-str-concat-over-line-jumps=yes
+
+
+[IMPORTS]
+# Verifica importações desnecessárias e ordem
+known-standard-library=dataclasses,typing
+known-third-party=requests,numpy,pandas,django
+known-first-party=my_project
+import-order-style=google
+
+
+[LOGGING]
+logging-format-style=new
+logging-modules=logging
+
+
+[MISCELLANEOUS]
+notes=FIXME,XXX,TODO
+
+
+[SECURITY]
+# Plugins de segurança opcionais (como bandit)
+confidence=HIGH

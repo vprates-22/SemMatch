@@ -2,17 +2,18 @@ from datetime import datetime
 from jinja2 import Environment, FileSystemLoader
 
 from semmatch.report.static.modes import ReportMode
-from semmatch.report.static.base_static_report import BaseStaticReport
+from semmatch.report.static.base import BaseStaticReport
 
 
 class HTMLReport(BaseStaticReport):
     def __init__(self, orchestrator, mode=ReportMode.SHOW_SUMMARY_ONLY):
         super().__init__(orchestrator, mode)
 
-        env = Environment(loader=FileSystemLoader('SemMatch/semmatch/report/static/reports/template'))
+        env = Environment(loader=FileSystemLoader(
+            'SemMatch/semmatch/report/static/reports/template'))
         self.template = env.get_template('index.html')
 
-    def generate_report(self, generate_file:bool = True):
+    def generate_report(self, generate_file: bool = True):
         tables = []
         summary = self.generate_summary_table()
 
@@ -44,5 +45,5 @@ class HTMLReport(BaseStaticReport):
                 f.write(html)
 
             return file_name
-    
+
         return html

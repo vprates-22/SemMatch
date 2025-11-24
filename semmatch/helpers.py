@@ -29,10 +29,10 @@ import torchvision
 import numpy as np
 
 import poselib
-from semmatch.utils.evaluation import intrinsics_to_camera
+from semmatch.utils.geometry import intrinsics_to_camera
 
 
-def load_image(path, gray=False) -> torch.Tensor:
+def load_image_torch(path, gray=False) -> torch.Tensor:
     """
     Loads an RGB or grayscale image from disk as a PyTorch tensor.
 
@@ -51,6 +51,13 @@ def load_image(path, gray=False) -> torch.Tensor:
     image = torchvision.io.read_image(str(path)).float() / 255
     if gray:
         image = torchvision.transforms.functional.rgb_to_grayscale(image)
+    return image
+
+
+def load_image_numpy(path, gray=False) -> np.ndarray:
+    flag = cv2.IMREAD_GRAYSCALE if gray else cv2.IMREAD_COLOR_RGB
+    image = cv2.imread(path, flag)
+
     return image
 
 
@@ -113,7 +120,7 @@ def get_inliers(mkpts0: np.ndarray,
     return np.array(details['inliers']).astype(bool)
 
 
-def to_cv(torch_image, convert_color=True, batch_idx=0, to_gray=False):
+def to_cv(torch_image, convert_color=False, batch_idx=0, to_gray=False):
     """
     Converts a PyTorch image tensor to a NumPy array in OpenCV format.
 
@@ -134,28 +141,36 @@ def to_cv(torch_image, convert_color=True, batch_idx=0, to_gray=False):
         Image as a NumPy array, possibly in BGR or grayscale.
     """
     if isinstance(torch_image, torch.Tensor):
-        if len(torch_image.shape) == 2:
-            torch_image = torch_image.unsqueeze(0)
-        if len(torch_image.shape) == 4 and torch_image.shape[0] == 1:
-            torch_image = torch_image[0]
-        if len(torch_image.shape) == 4 and torch_image.shape[0] > 1:
+        if torch_image.dim() == 4:
             torch_image = torch_image[batch_idx]
-        if len(torch_image.shape) == 3 and torch_image.shape[0] > 1:
-            torch_image = torch_image[batch_idx].unsqueeze(0)
 
-        if torch_image.max() > 1:
-            torch_image = torch_image / torch_image.max()
+        if torch_image.dim() == 2:
+            torch_image = torch_image.unsqueeze(0)
 
-        img = (torch_image.permute(1, 2, 0).detach(
-        ).cpu().numpy() * 255).astype("uint8")
+        if torch_image.dim() != 3:
+            raise ValueError(f"Unsupported tensor shape: {torch_image.shape}")
+
+        C, H, W = torch_image.shape
+
+        img = torch_image.detach().cpu().float()
+
+        if img.max() <= 1.0:
+            img = img * 255.0
+
+        img = img.permute(1, 2, 0).numpy().astype(np.uint8)
+
     else:
-        img = torch_image
+        if img.max() <= 1.0:
+            img = img * 255.0
 
-    if convert_color:
-        img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+        img = np.array(torch_image, dtype=np.uint8)
+
+    if convert_color and img.ndim == 3 and img.shape[2] == 3:
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
     if to_gray:
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        if img.ndim == 3:
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
     return img
 

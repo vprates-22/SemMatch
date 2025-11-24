@@ -1,5 +1,5 @@
 from semmatch.report.static.modes import ReportMode
-from semmatch.report.static.base_static_report import BaseStaticReport
+from semmatch.report.static.base import BaseStaticReport
 
 
 class CLIReport(BaseStaticReport):

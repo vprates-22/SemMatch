@@ -9,10 +9,10 @@ as well as managing related data.
 
 import inspect
 import importlib.util
-from .base_dataset_loader import BaseDatasetLoader
+from .base import BaseDataset
 
 
-def get_loader(name: str) -> object:
+def get_dataset(name: str) -> object:
     """
     Retrieve the class responsible for handling a specific dataset.
 
@@ -34,7 +34,7 @@ def get_loader(name: str) -> object:
             mod = __import__(path, fromlist=[""])
 
             for _, obj in inspect.getmembers(mod, inspect.isclass):
-                if issubclass(obj, BaseDatasetLoader) and obj is not BaseDatasetLoader:
+                if issubclass(obj, BaseDataset) and obj is not BaseDataset:
                     return obj
 
     raise RuntimeError(

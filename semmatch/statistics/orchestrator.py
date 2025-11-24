@@ -1,19 +1,20 @@
 from pathlib import Path
-from typing import List, Dict
-from dataclasses import fields, make_dataclass, asdict, is_dataclass, dataclass
+from typing import List, Dict, Union, Any
 
+from semmatch.configs.base import Config
 from semmatch.statistics.base_metric import BaseMetric, UpdateData
 
 
 class MetricsOrchestrator:
-    def __init__(self, metrics: List[type[BaseMetric]]):
-        self.pairs = []
+    def __init__(self, metrics: List[type[BaseMetric]], config: Union[Config, Dict[str, Any]]):
+        self.config: Config = Config(config)
+        self.pairs: List[List[str]] = []
 
-        self.metrics: List[type[BaseMetric]] = metrics
+        self.main_metrics: List[type[BaseMetric]] = list(set(metrics))
         self.auxiliary_metrics: List[type[BaseMetric]
                                      ] = self._get_auxiliary_metrics()
 
-        self.all_metrics: List[type[BaseMetric]] = self.metrics + \
+        self.all_metrics: List[type[BaseMetric]] = self.main_metrics + \
             self.auxiliary_metrics
 
         has_cycle, cycle_path = self._verify_cycles()
@@ -24,13 +25,13 @@ class MetricsOrchestrator:
 
         self.all_metrics: List[type[BaseMetric]] = self._sort_metrics()
         self.class_to_object: Dict[type[BaseMetric],
-                                   BaseMetric] = self._create_objects()
+                                   BaseMetric] = self._instantiate_objects()
 
     def _get_auxiliary_metrics(self) -> List[type[BaseMetric]]:
         auxiliary_metrics = set()
-        for metric in self.metrics:
+        for metric in self.main_metrics:
             for dependency in metric.get_dependencies():
-                if dependency not in self.metrics:
+                if dependency not in self.main_metrics:
                     auxiliary_metrics.add(dependency)
 
         return list(auxiliary_metrics)
@@ -107,32 +108,21 @@ class MetricsOrchestrator:
 
         return sorted_metrics
 
-    def _create_objects(self) -> Dict[type[BaseMetric], BaseMetric]:
+    def _instantiate_objects(self) -> Dict[type[BaseMetric], BaseMetric]:
         class_to_object = {}
 
         for metric_class in self.all_metrics:
-            class_to_object[metric_class] = metric_class(class_to_object)
+            class_to_object[metric_class] = metric_class(
+                class_to_object, self.config)
 
         return class_to_object
 
-    # def _make_frozen_copy(self, data: UpdateData):
-    #     if not is_dataclass(data):
-    #         raise TypeError("Object must be a dataclass instance")
-
-    #     FrozenCls = make_dataclass(
-    #         f"Frozen{type(data).__name__}",
-    #         fields=[(f.name, f.type) for f in fields(data)],
-    #         bases=(dataclass(type(data), frozen=True)),
-    #         frozen=True,
-    #     )
-    #     return FrozenCls(**asdict(data))
-
     def update(self, data: UpdateData) -> None:
-        # frozen_data = self._make_frozen_copy(data)
         p0 = Path(data.image0)
         p1 = Path(data.image1)
 
-        self.pairs.append([p0.parent.name + '/' +  p0.stem, p1.parent.name + '/' +  p1.stem])
+        self.pairs.append([p0.parent.name + '/' + p0.stem,
+                          p1.parent.name + '/' + p1.stem])
 
         for metric in self.all_metrics:
             self.class_to_object[metric].update(data)
@@ -153,6 +143,6 @@ class MetricsOrchestrator:
                     "pairs_results": self.class_to_object[metric].get_raw_results(),
                     "aggregated": self.class_to_object[metric].get_result()
                 }
-                for metric in self.metrics
+                for metric in self.main_metrics
             }
         }

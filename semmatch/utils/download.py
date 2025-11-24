@@ -12,12 +12,12 @@ Functions:
         Downloads a file from the specified URL to a local path with a progress bar.
 
     extract_archive(archive_path, output_dir, remove_after_extraction=False) -> List[Path]
+        Extracts the contents of an archive file into a specified directory.
         Extracts the contents of an archive file into a specified directory and optionally
         deletes the archive after extraction.
 """
 
 import os
-import poselib
 import zipfile
 import tarfile
 import urllib.request
@@ -26,10 +26,8 @@ from pathlib import Path
 from typing import Union, List
 
 import py7zr
-import numpy as np
 from tqdm import tqdm
 
-from semmatch.utils.evaluation import intrinsics_to_camera
 
 def download_from_url(
     url: str,
@@ -39,7 +37,7 @@ def download_from_url(
     """
     Downloads a file from the specified URL to the given local path.
 
-    Parameters:
+    Parameters
     ----------
     url : str
         The URL of the file to download.
@@ -48,6 +46,7 @@ def download_from_url(
     chunk_size : int, optional
         The size of each chunk to read during download (default is 1024 bytes).
     """
+
     with urllib.request.urlopen(url) as response:
         total_size = int(response.headers.get("Content-Length", 0))
 
@@ -77,7 +76,7 @@ def _extract_with_top_folder_strip(
     Helper method to extract files from archive members,
     stripping the top-level folder if present.
 
-    Parameters:
+    Parameters
     ----------
     archive_members : list
         List of archive members (files) to extract.
@@ -87,7 +86,7 @@ def _extract_with_top_folder_strip(
     output_dir : Path
         Directory where to extract files.
 
-    Returns:
+    Returns
     -------
     List[Path]
         List of extracted file paths.
@@ -128,6 +127,28 @@ def extract_archive(
     output_dir: Union[str, Path],
     remove_after_extraction: bool = False
 ) -> List[Path]:
+    """
+    Extracts the contents of an archive file into a specified directory.
+
+    Supports .zip, .tar, .tar.gz, and .7z formats. Optionally deletes the
+    archive file after successful extraction.
+
+    Parameters
+    ----------
+    archive_path : str or Path
+        The path to the archive file to be extracted.
+    output_dir : str or Path
+        The directory where the contents of the archive will be extracted.
+    remove_after_extraction : bool, optional
+        If True, the archive file will be deleted after extraction.
+        Defaults to False.
+
+    Returns
+    -------
+    List[Path]
+        A list of Path objects, each pointing to an extracted file.
+
+    """
     archive_path = Path(archive_path)
     if not archive_path.exists():
         raise FileNotFoundError(f"Archive not found: {archive_path}")
@@ -170,43 +191,3 @@ def extract_archive(
         archive_path.unlink()
 
     return extracted_files
-
-
-def get_inliers_ransac(mkpts0: np.ndarray,
-                mkpts1: np.ndarray,
-                K0: np.ndarray,
-                K1: np.ndarray) -> np.ndarray:
-    """
-    Estimates the relative pose between two sets of matched keypoints and returns inliers.
-
-    Uses pose estimation with RANSAC to identify geometrically consistent matches between two views.
-
-    Parameters
-    ----------
-    mkpts0 : np.ndarray
-        Matched keypoints from the first image, shape (N, 2).
-    mkpts1 : np.ndarray
-        Matched keypoints from the second image, shape (N, 2).
-    K0 : np.ndarray
-        Intrinsics matrix for the first camera (3x3).
-    K1 : np.ndarray
-        Intrinsics matrix for the second camera (3x3).
-
-    Returns
-    -------
-    np.ndarray
-        Boolean array of shape (N,) indicating which keypoint matches are inliers.
-    """
-    _, details = poselib.estimate_relative_pose(
-        mkpts0.tolist(),
-        mkpts1.tolist(),
-        intrinsics_to_camera(K0),
-        intrinsics_to_camera(K1),
-        ransac_opt={
-            'max_iterations': 10000,
-            'success_prob': 0.99999,
-            'max_epipolar_error': 6.0,
-        }
-    )
-
-    return np.array(details['inliers']).astype(bool)

@@ -1,13 +1,13 @@
 """
-Module: datasets.base_dataset_loader
+Module: datasets.base_dataset
 ----------------------------
 
-This module defines the abstract base class `BaseDatasetLoader` for dataset loading.
+This module defines the abstract base class `BaseDataset` for dataset loading.
 It establishes a interface for reading images and optionally downloading and 
 caching datasets.
 
 Classes:
-    BaseDatasetLoader (ABC): 
+    BaseDataset (ABC): 
         An abstract base class that defines methods and configuration needed to load
                     a dataset. Subclasses must implement the `load_images`, 
                     `read_image`, and `read_gt` methods.
@@ -16,21 +16,18 @@ Classes:
 import sys
 from pathlib import Path
 from abc import ABCMeta, abstractmethod
-from typing import Dict, Any, List, Tuple
+from typing import List, Dict, Tuple, Any, Union, Iterable
 
 import gdown
 import torch
+import numpy as np
 
-from semmatch.utils.io import combine_dicts
-from semmatch.utils.loaders import download_from_url, extract_archive
-
-DATASET_CONFIG_KEYS = [
-    'data_path', 'pairs_path', 'cache_images',
-    'max_pairs', 'url', 'url_download_extension',
-]
+from numpy.typing import NDArray
+from semmatch.configs.dataset_config import Config, DatasetConfig
+from semmatch.utils.download import download_from_url, extract_archive
 
 
-class BaseDatasetLoader(metaclass=ABCMeta):
+class BaseDataset(metaclass=ABCMeta):
     """
     Abstract base class for dataset loaders.
 
@@ -54,20 +51,12 @@ class BaseDatasetLoader(metaclass=ABCMeta):
         - Subclasses must implement the abstract methods to define dataset-specific logic.
         - The `download_dataset()` method supports both direct URLs and Google Drive links.
     """
-    default_config = {
-        'data_path': '',
-        'pairs_path': '',
-        'cache_images': False,
-        'max_pairs': -1,
-        'url': '',
-        'url_download_extension': ''
-    }
 
-    def __init__(self, config: Dict[str, Any] = None):
-        self.config = combine_dicts(self.default_config, config or {})
+    def __init__(self, config: Union[Config, Dict[str, Any]] = None):
+        self.config = DatasetConfig(config)
 
-        if not Path(self.config['data_path']).exists():
-            if self.config.get('url'):
+        if not Path(self.config.data_path).exists():
+            if self.config.url:
                 self.download_dataset()
             else:
                 print(
@@ -77,7 +66,7 @@ class BaseDatasetLoader(metaclass=ABCMeta):
         self._pairs = self.read_gt()
 
         self._image_cache = {}
-        if self.config['cache_images']:
+        if self.config.cache_images:
             self.load_images()
 
     @abstractmethod
@@ -93,11 +82,35 @@ class BaseDatasetLoader(metaclass=ABCMeta):
         raise NotImplementedError
 
     @abstractmethod
-    def map_point(self, point: Tuple[int, int], pair_index: int, scale_img0: float = 1.0, scale_img1: float = 1.0) -> Tuple[int, int]:
+    def map_point(
+        self,
+        points: NDArray,
+        pair_index: int,
+        scale_img0: Iterable[float] = [1.0, 1.0],
+        scale_img1: Iterable[float] = [1.0, 1.0]
+    ) -> tuple[Tuple[float, float], bool]:
         raise NotImplementedError
 
     @abstractmethod
-    def get_inliers(self, pair, mkpts0, mkpts1) -> List[bool]:
+    def get_inliers(
+        self,
+        mkpts0: NDArray,
+        mkpts1: NDArray,
+        pair_index: int,
+        scale_img0: Iterable[Iterable[float]] = [1.0, 1.0],
+        scale_img1: Iterable[Iterable[float]] = [1.0, 1.0],
+        threshold: float = 6.0,
+    ) -> NDArray:
+        raise NotImplementedError
+
+    @abstractmethod
+    def estimate_pose(
+        self,
+        pair_index: int,
+        mkpts0: NDArray,
+        mkpts1: NDArray,
+        threshold: float = 6.0,
+    ) -> Tuple[NDArray, NDArray]:
         raise NotImplementedError
 
     def download_dataset(self, chunk_size: int = 1024) -> None:
@@ -117,10 +130,10 @@ class BaseDatasetLoader(metaclass=ABCMeta):
             If the download or extraction process fails. In such cases,
             the temporary archive and output directory are cleaned up.
         """
-        url = self.config['url']
-        archive_ext = self.config['url_download_extension'] or '.zip'
+        url = self.config.url
+        archive_ext = self.config.url_download_extension or '.zip'
 
-        output_dir = Path(self.config['data_path'])
+        output_dir = Path(self.config.data_path)
         output_dir.mkdir(parents=True, exist_ok=True)
 
         # Definir nome temporário do arquivo
@@ -139,8 +152,8 @@ class BaseDatasetLoader(metaclass=ABCMeta):
                 remove_after_extraction=True
             )
 
-        except Exception as e:
-            print(f"Failed to download or extract dataset: {e}")
+        except Exception as err:
+            print(f"Failed to download or extract dataset: {err}")
             if archive_path.exists():
                 archive_path.unlink()
             output_dir.rmdir()

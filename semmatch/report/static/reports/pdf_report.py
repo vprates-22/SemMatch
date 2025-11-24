@@ -3,7 +3,7 @@ from datetime import datetime
 from xhtml2pdf import pisa
 
 from semmatch.report.static.modes import ReportMode
-from semmatch.report.static.base_static_report import BaseStaticReport
+from semmatch.report.static.base import BaseStaticReport
 from semmatch.report.static.reports.html_report import HTMLReport
 
 

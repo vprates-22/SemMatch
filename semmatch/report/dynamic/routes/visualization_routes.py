@@ -26,8 +26,8 @@ from flask import Blueprint, Response, request, send_file
 from semmatch.visualization.masks import plot_masks
 from semmatch.visualization.matches import plot_matches
 
-from semmatch.utils.io import combine_dicts
-from semmatch.utils.sam import load_sam, get_object_mask
+from semmatch.utils.models import load_sam, get_object_mask
+from semmatch.configs.visualization_routes_config import Config, VisualizationRoutesConfig
 from semmatch.utils.visualization import plot_pair, save, DEFAULT_COLORS
 
 matplotlib.use('Agg')
@@ -54,21 +54,15 @@ class VisualizationRoutes:
         - 'sam_model' : str
             Path to SAM model weights (default: 'sam2.1_l.pt').
     """
-    default_config = {
-        'arr_name': 'all_matches',
-        'matches_file_path': '',
-        'sam_model': 'sam2.1_l.pt',
-        'batch_size': 200
-    }
 
-    def __init__(self, config: Dict[str, Any]):
-        self.config = combine_dicts(self.default_config, config)
+    def __init__(self, config: Union[Config, Dict[str, Any]] = None):
+        self.config = VisualizationRoutesConfig(config)
 
-        if not self.config['matches_file_path']:
+        if not self.config.matches_file_path:
             raise Exception('Missing "matches_file_path"')
 
         self.data = self._load_data()
-        self.sam = load_sam(self.config['sam_model'])
+        self.sam = load_sam(self.config.sam_model)
         self.blueprint = Blueprint('visualization', __name__)
 
         self.last_pair = -1
@@ -77,7 +71,7 @@ class VisualizationRoutes:
         self._routes()
 
     def _load_data(self):
-        return np.load(self.config['matches_file_path'], allow_pickle=True)[self.config['arr_name']]
+        return np.load(self.config.matches_file_path, allow_pickle=True)[self.config.arr_name]
 
     def _routes(self):
         """
@@ -176,9 +170,9 @@ class VisualizationRoutes:
             raise Exception("...")
 
         masks0 = get_object_mask(
-            self.sam, img0, mkpts0, self.config['batch_size'])
+            self.sam, img0, mkpts0, self.config.batch_size)
         masks1 = get_object_mask(
-            self.sam, img1, mkpts1, self.config['batch_size'])
+            self.sam, img1, mkpts1, self.config.batch_size)
 
         for idx, mask0, mask1 in zip(not_cached, masks0, masks1):
             self.cache[idx] = {0: mask0, 1: mask1}
@@ -247,7 +241,7 @@ class VisualizationRoutes:
             PNG image with both masks overlaid.
         """
         point_match = int(point_match)
-        
+
         img0, img1, mkpts0, mkpts1, inliers =\
             self._load_images_and_keypoints(data, point_match)
 
