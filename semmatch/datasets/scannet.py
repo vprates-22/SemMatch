@@ -1,16 +1,16 @@
 """
-Module: scannet
+Module: semmatch.datasets.scannet
 ---------------
+This module defines the ScanNet dataset loader.
 
-This module implements the `Scannet` class for loading and processing the ScanNet dataset.
-It extends the `BaseDatasetLoader` class and provides functionality for reading images,
-depth maps, and calibrated ground truth data (intrinsics and poses).
+The ScanNet dataset is a collection of image sequences with varying viewpoints and illumination.
+This loader is designed to read image pairs and their corresponding homographies,
+which are used for evaluating feature matching algorithms.
 
-Classes:
-    Scannet (BaseDatasetLoader):
-        A dataset loader for the ScanNet dataset. Provides methods for loading and caching
-        image and depth data, as well as parsing ground truth transformation and intrinsic matrices.
+The main class, ScanNet, handles loading the dataset, caching images, and providing
+ground truth data for image pairs.
 """
+
 import os
 from typing import List, Dict, Tuple, Any, Union, Iterable
 
@@ -64,20 +64,6 @@ class Scannet(BaseDataset):
             self.load_images('depth')
 
     def load_images(self, attr: str = 'image') -> None:
-        """
-        Loads and caches images or depth maps used in the data pairs.
-
-        Parameters:
-        ----------
-        attr : str, optional
-            The type of data to load: `'image'` for RGB images or `'depth'` for depth maps.
-            Defaults to `'image'`. Any other value will raise an error.
-
-        Raises:
-        ------
-        NotImplementedError
-            If `attr` is not `'image'` or `'depth'`.
-        """
         if attr not in ['image', 'depth']:
             raise NotImplementedError(
                 'The only attributes allowed are "image" and "depth"')
@@ -93,22 +79,6 @@ class Scannet(BaseDataset):
                 cache[pair[f'{attr}1']] = load_func(pair[f'{attr}1'])
 
     def read_image(self, path: str, attr: str = 'image') -> Tensor:
-        """
-        Reads an image or depth map from the given path, using cache if enabled.
-
-        Parameters:
-        ----------
-        path : str
-            The file path to the image or depth map.
-        attr : str, optional
-            The type of data to load: `'image'` for RGB images or `'depth'` for depth maps.
-            Defaults to `'image'`.
-
-        Returns:
-        -------
-        torch.Tensor
-            The loaded image or depth map as a tensor.
-        """
         if self.config.cache_images:
             return self.image_cache[path]
 
@@ -116,35 +86,6 @@ class Scannet(BaseDataset):
         return load_func(path)
 
     def read_gt(self) -> List[Dict[str, Any]]:
-        """
-        Reads ground truth data pairs from a text file, including image paths, depth paths,
-        camera intrinsics, and relative poses.
-
-        Returns:
-        -------
-        dict
-            A list of dictionaries, each containing the following keys:
-
-            - 'image0' : str
-              Path to the first RGB image in the pair.
-            - 'image1' : str
-              Path to the second RGB image in the pair.
-            - 'depth0' : str
-              Path to the depth map corresponding to `image0`.
-            - 'depth1' : str
-              Path to the depth map corresponding to `image1`.
-            - 'K0' : np.ndarray
-              3x3 intrinsic matrix for the first camera.
-            - 'K1' : np.ndarray
-              3x3 intrinsic matrix for the second camera.
-            - 'T_0to1' : np.ndarray
-              4x4 transformation matrix representing the pose from image0 to image1.
-
-        Notes:
-        ------
-        Only lines with exactly 32 elements are considered valid. If `max_pairs` is set
-        in the config and greater than 0, the number of returned pairs is limited accordingly.
-        """
         pairs = []
         with Path(self.config.pairs_path).open() as f:
             lines = f.readlines()
@@ -232,6 +173,25 @@ class Scannet(BaseDataset):
 
     @staticmethod
     def build_intrinsic_matrixes(all_info: List[str]) -> Tuple[NDArray, NDArray, NDArray]:
+        """
+        Builds the intrinsic matrices and relative transformation from raw text data.
+
+        Parameters
+        ----------
+        all_info : List[str]
+            A list of 38 strings representing the pair info, intrinsics, and pose.
+            Expected format: [..., K0_elements (9), K1_elements (9), T_0to1_elements (16)]
+
+        Returns
+        -------
+        Tuple[np.ndarray, np.ndarray, np.ndarray]
+            - K0 : np.ndarray
+              3x3 intrinsic matrix for the first camera.
+            - K1 : np.ndarray
+              3x3 intrinsic matrix for the second camera.
+            - T_0to1 : np.ndarray
+              4x4 transformation matrix representing the pose from image0 to image1.
+        """
         K0 = np.array(all_info[4:13]).astype(float).reshape(3, 3)
         K1 = np.array(all_info[13:22]).astype(float).reshape(3, 3)
         T_0to1 = np.array(all_info[22:38]).astype(float).reshape(4, 4)

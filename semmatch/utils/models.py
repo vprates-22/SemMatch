@@ -27,7 +27,7 @@ from ultralytics import SAM
 from numpy.typing import NDArray
 from semmatch.settings import MODEL_DIR_NAME
 
-from semmatch.helpers import to_tensor
+from semmatch.utils.image import to_tensor
 from semmatch.utils.image import crop_square_around_mask
 
 # -------------------------------SAM------------------------------------------------

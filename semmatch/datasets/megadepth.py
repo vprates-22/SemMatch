@@ -1,16 +1,15 @@
 """
-Module: megadepth
+Module: semmatch.datasets.megadepth
 ------------------
 
-This module implements the `MegaDepth` class for loading and processing MegaDepth dataset.
-It extends the `BaseDatasetLoader` class and provides methods for reading image data, depth data,
-and ground truth information.
+This module defines the MegaDepth dataset loader.
 
-Classes:
-    MegaDepth (BaseDatasetLoader):
-        A class that loads the MegaDepth dataset. It provides functionality to
-        load and cache images and depth data, as well as read ground truth data
-        including camera intrinsics and extrinsics.
+The MegaDepth dataset is a collection of image sequences with varying viewpoints and illumination.
+This loader is designed to read image pairs and their corresponding homographies,
+which are used for evaluating feature matching algorithms.
+
+The main class, MegaDepth, handles loading the dataset, caching images, and providing
+ground truth data for image pairs.
 """
 
 import os
@@ -67,20 +66,6 @@ class MegaDepth(BaseDataset):
             self.load_images('depth')
 
     def load_images(self, attr: str = 'image') -> None:
-        """
-        Loads and caches images or depth maps used in the data pairs.
-
-        Parameters:
-        ----------
-        attr : str, optional
-            The type of data to load: `'image'` for RGB images or `'depth'` for depth maps.
-            Defaults to `'image'`. Any other value will raise an error.
-
-        Raises:
-        ------
-        NotImplementedError
-            If `attr` is not `'image'` or `'depth'`.
-        """
         if attr not in ['image', 'depth']:
             raise NotImplementedError(
                 'The only attributes allowed are "image" and "depth"')
@@ -96,58 +81,19 @@ class MegaDepth(BaseDataset):
                 cache[pair[f'{attr}1']] = load_func(pair[f'{attr}1'])
 
     def read_image(self, path: str, attr: str = 'image') -> Tensor:
-        """
-        Reads an image or depth map from the given path, using cache if enabled.
+        if attr not in ['image', 'depth']:
+            raise NotImplementedError(
+                'The only attributes allowed are "image" and "depth"')
 
-        Parameters:
-        ----------
-        path : str
-            The file path to the image or depth map.
-        attr : str, optional
-            The type of data to load: `'image'` for RGB images or `'depth'` for depth maps.
-            Defaults to `'image'`.
-
-        Returns:
-        -------
-        torch.Tensor
-            The loaded image or depth map as a tensor.
-        """
         if self.config.cache_images:
-            return self.image_cache[path]
+            attr_name = f'_{attr}_cache'
+            cache = getattr(self, attr_name)
+            return cache[path]
 
         load_func = load_image if attr == 'image' else load_depth
         return load_func(path)
 
     def read_gt(self) -> List[Dict[str, Any]]:
-        """
-        Reads ground truth data pairs from a text file, including image paths, depth paths,
-        camera intrinsics, and relative poses.
-
-        Returns:
-        -------
-        dict
-            A list of dictionaries, each containing the following keys:
-
-            - 'image0' : str
-              Path to the first RGB image in the pair.
-            - 'image1' : str
-              Path to the second RGB image in the pair.
-            - 'depth0' : str
-              Path to the depth map corresponding to `image0`.
-            - 'depth1' : str
-              Path to the depth map corresponding to `image1`.
-            - 'K0' : np.ndarray
-              3x3 intrinsic matrix for the first camera.
-            - 'K1' : np.ndarray
-              3x3 intrinsic matrix for the second camera.
-            - 'T_0to1' : np.ndarray
-              4x4 transformation matrix representing the pose from image0 to image1.
-
-        Notes:
-        ------
-        Only lines with exactly 32 elements are considered valid. If `max_pairs` is set
-        in the config and greater than 0, the number of returned pairs is limited accordingly.
-        """
         pairs = []
         with Path(self.config.pairs_path).open() as f:
             for line in f.readlines():
@@ -242,15 +188,21 @@ class MegaDepth(BaseDataset):
         """
         Builds the intrinsic matrices and relative transformation from raw text data.
 
-        Parameters:
+        Parameters
         ----------
         all_info : List[str]
-            A list of 32 strings representing the pair info, intrinsics, and pose.
+            A list of 32 strings representing the pair information, including
+            intrinsics for camera 0, intrinsics for camera 1, and the pose (R, t).
 
-        Returns:
+        Returns
         -------
-        Tuple[np.ndarray, np.ndarray, np.ndarray]
-            Intrinsics K0, K1 (3x3) and relative transformation T_0to1 (4x4).
+        Tuple[NDArray, NDArray, NDArray]
+            - K0 : np.ndarray
+              3x3 intrinsic matrix for the first camera.
+            - K1 : np.ndarray
+              3x3 intrinsic matrix for the second camera.
+            - T_0to1 : np.ndarray
+              4x4 transformation matrix representing the pose from image0 to image1.
         """
         K0 = np.array(all_info[2:11]).astype(float).reshape(3, 3)
         K1 = np.array(all_info[11:20]).astype(float).reshape(3, 3)

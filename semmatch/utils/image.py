@@ -24,7 +24,84 @@ import numpy as np
 from torch import Tensor
 from torchvision import transforms
 
-to_tensor = transforms.ToTensor()
+
+def to_tensor(img_np: np.ndarray) -> torch.Tensor:
+    """
+    Converts a NumPy image array to a normalized PyTorch tensor.
+
+    Parameters
+    ----------
+    img_np : np.ndarray
+        Input image as a NumPy array of shape (H, W, C) or (H, W).
+
+    Returns
+    -------
+    torch.Tensor
+        Image as a PyTorch tensor of shape (C, H, W) with float32 values in [0, 1].
+    """
+    if isinstance(img_np, torch.Tensor):
+        return img_np
+
+    img_np = img_np.astype(np.float32) / 255.0
+    img_np = img_np * 2 - 1
+    img_np = np.transpose(img_np, (2, 0, 1))
+    img_tensor = torch.from_numpy(img_np).unsqueeze(0)
+    return img_tensor
+
+
+def to_cv(torch_image, convert_color=False, batch_idx=0, to_gray=False):
+    """
+    Converts a PyTorch image tensor to a NumPy array in OpenCV format.
+
+    Parameters
+    ----------
+    torch_image : torch.Tensor or np.ndarray
+        Input image tensor, can be shape (C, H, W), (B, C, H, W), or already NumPy.
+    convert_color : bool, optional
+        If True, converts RGB to BGR (OpenCV format).
+    batch_idx : int, optional
+        Index to select if image is batched (shape [B, C, H, W]).
+    to_gray : bool, optional
+        If True, converts the final image to grayscale.
+
+    Returns
+    -------
+    np.ndarray
+        Image as a NumPy array, possibly in BGR or grayscale.
+    """
+    if isinstance(torch_image, torch.Tensor):
+        if torch_image.dim() == 4:
+            torch_image = torch_image[batch_idx]
+
+        if torch_image.dim() == 2:
+            torch_image = torch_image.unsqueeze(0)
+
+        if torch_image.dim() != 3:
+            raise ValueError(f"Unsupported tensor shape: {torch_image.shape}")
+
+        C, H, W = torch_image.shape
+
+        img = torch_image.detach().cpu().float()
+
+        if img.max() <= 1.0:
+            img = img * 255.0
+
+        img = img.permute(1, 2, 0).numpy().astype(np.uint8)
+
+    else:
+        if img.max() <= 1.0:
+            img = img * 255.0
+
+        img = np.array(torch_image, dtype=np.uint8)
+
+    if convert_color and img.ndim == 3 and img.shape[2] == 3:
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+
+    if to_gray:
+        if img.ndim == 3:
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+    return img
 
 
 def load_image(path, gray=False) -> Tensor:

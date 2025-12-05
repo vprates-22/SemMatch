@@ -16,9 +16,9 @@ from semmatch.statistics.data_generators import InlierGenerator, ProjectionGener
 from semmatch.statistics.pipeline_data import AnalysisResult, MatchResult, ErrorResult, PoseErrorResult
 
 
-def generate_match_result(inliers: NDArray, threshold: float) -> MatchResult:
+def generate_match_result(inliers: NDArray, threshold: float, key: str = 'default') -> MatchResult:
     """
-    Analyzes a single set of inlier data.
+    Generates a `MatchResult` object from a boolean array of inliers.
 
     Parameters
     ----------
@@ -26,23 +26,25 @@ def generate_match_result(inliers: NDArray, threshold: float) -> MatchResult:
         A boolean NumPy array where True indicates an inlier and False an outlier.
     threshold : float
         The threshold used to determine inliers.
+    key : str, optional
+        A unique identifier for this result, by default 'default'.
 
     Returns
     -------
     MatchResult
         An object containing the calculated true positives, false positives,
-        and the threshold.
     """
     hits = inliers.sum()
     misses = (~inliers).sum()
 
     return MatchResult(
+        key=key,
+        threshold=threshold,
+
         true_positives=hits,
         false_positives=misses,
         false_negatives=0,
         true_negatives=0,
-
-        threshold=threshold
     )
 
 
@@ -74,8 +76,8 @@ class InliersMatchAnalyzer(DataAnalyzer):
         Returns
         -------
         list[AnalysisResult] or AnalysisResult
-            A list of `MatchResult` objects if `inlier_data` was iterable,
-            or a single `MatchResult` object otherwise.
+            A list of `MatchResult` objects, one for each set of inlier data
+            (or a single element list if `inlier_data` was not iterable).
         """
         inlier_data = generated_data[InlierGenerator]
 
@@ -85,7 +87,8 @@ class InliersMatchAnalyzer(DataAnalyzer):
         result = []
 
         for data in inlier_data:
-            result.append(generate_match_result(data.inliers, data.threshold))
+            result.append(generate_match_result(
+                data.inliers, data.threshold, key=f"inlier_threshold:{data.threshold}"))
 
         return result
 
@@ -110,22 +113,20 @@ class ProjectionMatchAnalyzer(DataAnalyzer):
 
     def analyze(self, generated_data) -> list[AnalysisResult]:
         """
-        Analyzes the generated projection data.
-
-        If `projection_data` is an iterable, it processes each item individually.
-        Otherwise, it processes the single `projection_data` object.
+        Analyzes the generated projection data to determine inliers based on
+        configured projection thresholds.
 
         Parameters
         ----------
         generated_data : dict[type[DataGenerator], list[GeneratedData]]
             A dictionary containing generated data, expected to have `ProjectionGenerator`
-            as a key.
+            as a key, with a list containing a single `ProjectionData` object.
 
         Returns
         -------
-        list[AnalysisResult] or AnalysisResult
-            A list of `MatchResult` objects if `projection_data` was iterable,
-            or a single `MatchResult` object otherwise.
+        list[AnalysisResult]
+            A list of `MatchResult` objects, one for each `projection_threshold`
+            defined in the analyzer's configuration.
         """
         projection_data = generated_data[ProjectionGenerator][0]
 
@@ -141,7 +142,8 @@ class ProjectionMatchAnalyzer(DataAnalyzer):
             inliers = np.zeros_like(valid)
             inliers[valid] = dists <= threshold
 
-            result.append(generate_match_result(inliers, threshold))
+            result.append(generate_match_result(
+                inliers, threshold, key=f"projection_threshold:{threshold}"))
 
         return result
 
@@ -158,13 +160,13 @@ class ReprojectionErrorAnalyzer(DataAnalyzer):
 
     def analyze(self, generated_data) -> list[AnalysisResult]:
         """
-        Analyzes the generated projection data.
+        Computes the reprojection errors for valid projected points.
 
         Parameters
         ----------
-        generated_data : dict[type[DataGenerator], list[GeneratedData]]
+        generated_data: dict[type[DataGenerator], list[GeneratedData]]
             A dictionary containing generated data, expected to have `ProjectionGenerator`
-            as a key.
+            as a key, with a list containing a single `ProjectionData` object.
 
         Returns
         -------
@@ -197,18 +199,19 @@ class PoseEstimationAnalyzer(DataAnalyzer):
 
     def analyze(self, generated_data) -> list[AnalysisResult]:
         """
-        Analyzes the generated pose data.
+        Analyzes the generated pose data to compute rotation and translation errors.
 
         Parameters
         ----------
         generated_data : dict[type[DataGenerator], list[GeneratedData]]
             A dictionary containing generated data, expected to have `PoseEstimationGenerator`
-            as a key.
+            as a key, with a list of `PoseData` objects.
 
         Returns
         -------
         list[AnalysisResult]
-            A list containing a single `ErrorResult` with rotation and translation errors.
+            A list of `PoseErrorResult` objects, one for each `PoseData` object
+            in the input.
         """
         pose_data = generated_data[PoseEstimationGenerator]
         if not isinstance(pose_data, Iterable):
@@ -232,8 +235,7 @@ class PoseEstimationAnalyzer(DataAnalyzer):
                 R_diff = R_est.T @ R_gt
                 cos_angle = (np.trace(R_diff) - 1) / 2
                 cos_angle = np.clip(cos_angle, -1.0, 1.0)
-                angle_R = np.degrees(np.arccos(cos_angle))
-                rotation_error = angle_R
+                rotation_error = np.degrees(np.arccos(cos_angle))
 
                 # --- Translation error ---
                 # Normalize vectors
@@ -247,14 +249,14 @@ class PoseEstimationAnalyzer(DataAnalyzer):
 
                 # Convert to degrees
                 angle_t = np.degrees(np.arccos(dot_product))
-                angle_t = min(angle_t, 180.0 - angle_t)
-
-                translation_error = angle_t
+                translation_error = min(angle_t, 180.0 - angle_t)
 
             results.append(PoseErrorResult(
-                rotation_errors=rotation_error,
-                translation_errors=translation_error,
-                threshold=threshold
+                key=f"ransac_thresholds:{threshold}",
+                threshold=threshold,
+
+                rotation_error=rotation_error,
+                translation_error=translation_error,
             ))
 
         return results

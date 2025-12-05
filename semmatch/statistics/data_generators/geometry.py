@@ -1,14 +1,16 @@
 """
-Module: semmatch.statistics_new.data_generators.geometry
---------------------------------------------------------
+Module: semmatch.statistics.data_generators.geometry
+----------------------------------------------------
+
+This module defines data generators specifically designed for geometric analysis
+within the SemMatch statistics pipeline. These generators process raw input data
+to produce structured geometric information such as inlier masks, projected points,
+and estimated camera poses, which are then consumed by data analyzers.
 
 This module provides data generators for geometric analysis, specifically for
 determining inliers among matched keypoints and projecting points between images.
 """
-import numpy as np
 from collections.abc import Iterable
-
-from numpy.typing import NDArray
 
 from semmatch.configs.base import Config
 from semmatch.statistics.data_generators.base import DataGenerator
@@ -39,6 +41,23 @@ class InlierGenerator(DataGenerator):
         super().__init__(default_config.merge_config(config))
 
     def generate(self, raw_input: RawDataInput) -> list[InlierData]:
+        """
+        Generates a list of `InlierData` objects based on configured inlier thresholds.
+
+        For each threshold specified in the configuration, this method queries the
+        dataset to get inliers for the provided raw input's keypoints.
+
+        Parameters
+        ----------
+        raw_input : RawDataInput
+            The raw input data containing keypoints and dataset information.
+
+        Returns
+        -------
+        list[InlierData]
+            A list of `InlierData` objects, each corresponding to a different
+            inlier threshold.
+        """
         threshold = self._config.inlier_threshold
         if not isinstance(threshold, Iterable):
             threshold = [threshold]
@@ -72,19 +91,28 @@ class ProjectionGenerator(DataGenerator):
         Configuration object for the generator. Currently, no specific
         configuration parameters are defined for this generator.
 
-    Returns
-    -------
-    ProjectionData
-        A dataclass containing:
-        - projections (NDArray[np.float32]): The projected 2D points in `image1`.
-        - valid (NDArray[np.bool_]): A boolean mask indicating the validity
-          of each projection.
     """
 
-    def __init__(self, config: Config = None):
-        super().__init__(config)
-
     def generate(self, raw_input: RawDataInput) -> list[ProjectionData]:
+        """
+        Generates a `ProjectionData` object by projecting keypoints from the
+        first image to the second using the dataset's ground truth transformation.
+
+        This method calls the `map_point` method of the dataset to obtain
+        the projected 2D points and a boolean mask indicating their validity.
+
+        Parameters
+        ----------
+        raw_input : RawDataInput
+            The raw input data containing keypoints, dataset information,
+            and the second image's keypoints for reference.
+
+        Returns
+        -------
+        list[ProjectionData]
+            A list containing a single `ProjectionData` object with the
+            projected points, their validity, and the second image's keypoints.
+        """
         projections, valid = raw_input.dataset.map_point(
             raw_input.mkpts0,
             raw_input.pair_index,
@@ -111,10 +139,6 @@ class PoseEstimationGenerator(DataGenerator):
         Expected keys:
         - 'pose_threshold' (float): Threshold for pose estimation. Defaults to 6.0.
 
-    Returns
-    -------
-    list[PoseEstimationData]
-        A list of dataclasses containing estimated poses.
     """
 
     def __init__(self, config: Config = None):
@@ -124,6 +148,27 @@ class PoseEstimationGenerator(DataGenerator):
         super().__init__(default_config.merge_config(config))
 
     def generate(self, raw_input: RawDataInput) -> list[PoseData]:
+        """
+        Generates a list of `PoseData` objects by estimating camera poses
+        for various RANSAC thresholds.
+
+        For each RANSAC threshold specified in the configuration, this method
+        uses the dataset's `estimate_pose` method to compute the estimated
+        rotation and translation. It also retrieves the ground truth pose
+        from the dataset if available.
+
+        Parameters
+        ----------
+        raw_input : RawDataInput
+            The raw input data containing keypoints, dataset information,
+            and the pair index.
+
+        Returns
+        -------
+        list[PoseData]
+            A list of `PoseData` objects, each containing the estimated and
+            ground truth poses for a given RANSAC threshold.
+        """
         ransac_threshold = self._config.pose_thresholds
         if not isinstance(ransac_threshold, Iterable):
             ransac_threshold = [ransac_threshold]

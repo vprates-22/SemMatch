@@ -15,28 +15,21 @@ Classes:
         also computes LPIPS loss for object similarity between corresponding image regions.
 """
 import multiprocessing as mp
-from typing import List
 from pathlib import Path
 
 import torch
 import numpy as np
 from tqdm import tqdm
-from torch import Tensor
 from typing import Dict, Any, Union
-
-
-from semmatch.utils.geometry import project_points_between_cameras
 
 from semmatch.statistics.orchestrator import MetricsOrchestrator
 
-from semmatch.statistics.base_update_data import BaseMetricUpdateData
 from semmatch.configs.evaluator_config import Config, EvaluatorConfig
 from semmatch.datasets import get_dataset
-from semmatch.helpers import to_cv
+from semmatch.utils.image import to_cv
 from semmatch.utils.image import resize_long_edge
 from semmatch.datasets.base import DATASET_CONFIG_KEYS
-from semmatch.settings import BASE_PATH, RESULTS_PATH, MATCHES_PATH, VISUALIZATIONS_PATH
-from semmatch.utils.models import load_sam, get_object_mask, load_lpips, get_obj_similarities
+from semmatch.utils.models import load_sam, load_lpips, get_obj_similarities
 
 MODEL_DIR_NAME = 'models'
 

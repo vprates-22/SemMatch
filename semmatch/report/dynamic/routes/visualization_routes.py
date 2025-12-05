@@ -14,7 +14,7 @@ The visualizations are accessible via HTTP routes (see `_routes`), and are serve
 
 import io
 from collections.abc import Iterable
-from typing import Dict, Any, Tuple, Iterable, Union, List
+from typing import Dict, Any, Tuple, Union, List
 
 import cv2
 import numpy as np

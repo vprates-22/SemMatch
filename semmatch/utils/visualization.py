@@ -28,7 +28,6 @@ import os
 from typing import Any, List, Optional, Tuple, Union
 
 import cv2
-import torch
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -41,7 +40,7 @@ from matplotlib.figure import Figure
 from matplotlib.patches import ConnectionPatch
 from matplotlib import colors as mcolors
 
-from semmatch.helpers import to_cv
+from semmatch.utils.image import to_cv
 
 DEFAULT_COLORS = {
     'g': '#4ade80',

@@ -1,6 +1,6 @@
 """
-Module Name: dataset
-----------------------------
+Module: semmatch.datasets
+-------------------------
 
 This module is responsible for handling the operations related to datasets.
 It includes functionality for downloading them, and loading and reading images, 
@@ -14,7 +14,7 @@ from .base import BaseDataset
 
 def get_dataset(name: str) -> object:
     """
-    Retrieve the class responsible for handling a specific dataset.
+    Retrieve the class responsible for handling a specific dataset by its name.
 
     Parameters
     ----------
@@ -24,7 +24,7 @@ def get_dataset(name: str) -> object:
     Returns
     -------
     type
-        The class responsible for extracting and processing the specified dataset.
+        The class (subclass of `BaseDataset`) responsible for extracting and processing the specified dataset.
     """
     paths = [name, f'{__name__}.{name}']
 
