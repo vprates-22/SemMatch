@@ -52,7 +52,6 @@ class EvaluatorConfig(Config):
         - `visualization_path` (str): Directory path where visualizations are saved.
     """
     _config = {
-        'metrics': [],
         'dataset': 'scannet',
         'n_workers': 8,
         'metrics_config': {
@@ -70,6 +69,4 @@ class EvaluatorConfig(Config):
         'results_path': RESULTS_PATH,
         'matches_path': MATCHES_PATH,
         'visualization_path': VISUALIZATIONS_PATH,
-        # 'report': None,
-        # 'detector_only': False,
     }

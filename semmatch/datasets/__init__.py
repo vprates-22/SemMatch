@@ -12,7 +12,7 @@ import importlib.util
 from .base import BaseDataset
 
 
-def get_dataset(name: str) -> object:
+def get_dataset(name: str) -> type[BaseDataset]:
     """
     Retrieve the class responsible for handling a specific dataset by its name.
 

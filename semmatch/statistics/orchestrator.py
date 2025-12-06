@@ -273,12 +273,12 @@ class PipelineOrchestrator:
                                         for gen in analysis.get_dependencies()}
                     )
 
-    def compute(self) -> None:
+    def summarize(self) -> None:
         """
         Computes the final results for all metrics.
 
         This method iterates through all instantiated metric objects and calls
-        their `compute` method to finalize their results.
+        their `summarize` method to finalize their results.
         """
         for analysis_plan in self.plan:
             title = analysis_plan.title

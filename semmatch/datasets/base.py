@@ -15,20 +15,20 @@ BaseDataset
     for any dataset loader within the `semmatch` framework.
 """
 
-import sys
 from pathlib import Path
-from abc import ABCMeta, abstractmethod
+from abc import abstractmethod
 from typing import List, Dict, Tuple, Any, Union, Iterable
 
 import gdown
 import torch
 
 from numpy.typing import NDArray
+from semmatch.utils.validation import ValidatedClass
 from semmatch.configs.dataset_config import Config, DatasetConfig
 from semmatch.utils.download import download_from_url, extract_archive
 
 
-class BaseDataset(metaclass=ABCMeta):
+class BaseDataset(ValidatedClass):
     """
     Abstract base class for dataset loaders.
 
@@ -65,16 +65,20 @@ class BaseDataset(metaclass=ABCMeta):
     - `estimate_pose`: To estimate the relative pose between two images.
     """
 
+    _validation_rules = {
+        'data_path': {'required': True, 'type': str},
+        'pairs_path': {'required': True, 'type': str},
+        'cache_images': {'required': False, 'type': bool, 'default': False},
+        'max_pairs': {'required': False, 'type': int, 'default': -1},
+        'url': {'required': True, 'type': str},
+        'url_download_extension': {'required': True, 'type': str},
+    }
+
     def __init__(self, config: Union[Config, Dict[str, Any]] = None):
-        self.config = DatasetConfig(config)
+        super().__init__(DatasetConfig(config))
 
         if not Path(self.config.data_path).exists():
-            if self.config.url:
-                self.download_dataset()
-            else:
-                print(
-                    'Neither a valid "data_path" nor a "url" was provided to download the dataset.', file=sys.stderr)
-                sys.exit(1)
+            self.download_dataset()
 
         self._pairs = self.read_gt()
 
