@@ -46,8 +46,6 @@ class BaseMetric(metaclass=ABCMeta):
     _allowed_result_type: Union[Type[AnalysisResult],
                                 list[Type[AnalysisResult]]] = None
 
-    _result: float = 0.0
-    _raw_results: Union[list, dict] = []
 
     def __init__(self, config: Config = None):
         """
@@ -59,6 +57,9 @@ class BaseMetric(metaclass=ABCMeta):
             raise NotImplementedError(
                 f"Metric '{self.__class__.__name__}' must define '_allowed_result_type'."
             )
+        
+        self._result: float = 0.0
+        self._raw_results: Union[list, dict] = []
 
         self._config = config
 

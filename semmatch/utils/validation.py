@@ -105,7 +105,7 @@ def validate_params(params: Dict[str, Any], rules: Dict[str, Dict]) -> Dict[str,
     for key, rule in rules.items():
         required = rule.get('required', False)
         default = rule.get('default', None)
-        allow_none = rule.get('allow_none', False)
+        allow_none = rule.get('allow_none', True)
 
         if key not in params:
             if required and default is None:
@@ -164,4 +164,4 @@ def validate_params(params: Dict[str, Any], rules: Dict[str, Dict]) -> Dict[str,
         raise ValueError("Parameter validation failed:\n  " +
                          "\n  ".join(errors))
 
-    return out
+    return Config(out)

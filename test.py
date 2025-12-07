@@ -5,10 +5,12 @@ import numpy as np
 
 from pathlib import Path
 from functools import partial
-from semmatch.evaluation.semantics import SemanticEval
-from semmatch.report.dynamic.server import run_report
+from semmatch.evaluation.evaluator import Evaluator
+# from semmatch.report.dynamic.server import run_report
+from semmatch.statistics.analyzers import *
 from semmatch.statistics.metrics import *
-from semmatch.report.static.reports import *
+from semmatch.statistics.orchestrator import AnalysisPlan
+# from semmatch.report.static.reports import *
 
 dev = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -39,16 +41,46 @@ if __name__ == "__main__":
     model = Reasoning(reasoning_model_response['model']).to(dev).eval()
     match_fn = partial(match_reasoning_model, model=model)
 
-    semMatch = SemanticEval({
-        'metrics': [Accuracy, F1Score, FalsePositiveRatio, Precision, Recall],
-        'report': PDFReport,
-        'sam_model': 'sam2.1_l.pt',
-        'data_path': 'hpatches',
-        'dataset': 'hpatches',
-        'max_pairs': 5
+    plan = [
+        AnalysisPlan(
+            title='Semantic', 
+            analysis=SemanticMatchAnalyzer, 
+            metrics=[Accuracy, Precision, Recall, FalsePositiveRatio, F1Score]
+        ),
+        AnalysisPlan(
+            title='Inliers', 
+            analysis=InliersMatchAnalyzer, 
+            metrics=[Accuracy, Precision, Recall, FalsePositiveRatio, F1Score]
+        ),
+        AnalysisPlan(
+            title='Projection', 
+            analysis=ProjectionMatchAnalyzer, 
+            metrics=[Accuracy, Precision, Recall, FalsePositiveRatio, F1Score]
+        ),
+        AnalysisPlan(
+            title='Reprojection Error', 
+            analysis=ReprojectionErrorAnalyzer, 
+            metrics=[ReprojectionAverageError]
+        ),
+        AnalysisPlan(
+            title='Pose Estimation Error', 
+            analysis=PoseEstimationAnalyzer, 
+            metrics=[RotationError, TranslationError, AUC]
+        ),
+    ]
+
+    semMatch = Evaluator(plan, {
+        # 'metrics': [Accuracy, F1Score, FalsePositiveRatio, Precision, Recall],
+        # 'report': PDFReport,
+        # 'sam_model': 'sam2.1_l.pt',
+        'dataset': 'megadepth',
+        'dataset_config': {
+            'data_path': 'megadepth',
+            'max_pairs': 100
+        }
     })
 
-    semMatch.extract_and_save_matches(match_fn, 'test')
+    semMatch.run(match_fn, 'test')
 
     # run_report({
     #     'sam_model': 'sam2.1_l.pt',

@@ -92,7 +92,6 @@ class ProjectionGenerator(DataGenerator):
         configuration parameters are defined for this generator.
 
     """
-
     def generate(self, raw_input: RawDataInput) -> list[ProjectionData]:
         """
         Generates a `ProjectionData` object by projecting keypoints from the
@@ -137,7 +136,7 @@ class PoseEstimationGenerator(DataGenerator):
     config : Config, optional
         Configuration object for the generator.
         Expected keys:
-        - 'pose_threshold' (float): Threshold for pose estimation. Defaults to 6.0.
+        - 'ransac_thresholds' (float): Threshold for pose estimation. Defaults to 6.0.
 
     """
 
@@ -169,26 +168,30 @@ class PoseEstimationGenerator(DataGenerator):
             A list of `PoseData` objects, each containing the estimated and
             ground truth poses for a given RANSAC threshold.
         """
-        ransac_threshold = self._config.pose_thresholds
+        ransac_threshold = self._config.ransac_thresholds
         if not isinstance(ransac_threshold, Iterable):
             ransac_threshold = [ransac_threshold]
 
         dataset = raw_input.dataset
         pair_index = raw_input.pair_index
+        mkpts0 = raw_input.mkpts0
+        mkpts1 = raw_input.mkpts1
 
         data = []
         for threshold in ransac_threshold:
             R_est, t_est = dataset.estimate_pose(
-                pair_index=pair_index,
-                mkpts0=raw_input.mkpts0,
-                mkpts1=raw_input.mkpts1,
-                threshold=threshold,
+                pair_index,
+                mkpts0,
+                mkpts1,
+                threshold
             )
+            if R_est is None and t_est is None:
+                continue
+            
             T_0to1 = dataset.pairs[pair_index].get(
-                'T_0to1', None)
+                    'T_0to1', None)
 
-            R_gt, t_gt = None, None
-            if T_0to1:
+            if T_0to1 is not None:
                 R_gt = T_0to1[:3, :3]
                 t_gt = T_0to1[:3, 3]
 

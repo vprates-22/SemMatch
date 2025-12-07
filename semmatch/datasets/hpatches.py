@@ -127,8 +127,8 @@ class HPatches(BaseDataset):
         mkpts0: NDArray,
         mkpts1: NDArray,
         pair_index: int,
-        scale_img0: Iterable[Iterable[float]],
-        scale_img1: Iterable[Iterable[float]],
+        scale_img0: Iterable[Iterable[float]] = [1.0, 1.0],
+        scale_img1: Iterable[Iterable[float]] = [1.0, 1.0],
         threshold: float = 6.0,
     ) -> NDArray:
         assert mkpts0.shape == mkpts1.shape

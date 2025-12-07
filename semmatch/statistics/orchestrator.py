@@ -251,7 +251,7 @@ class PipelineOrchestrator:
         analysis_result = {}
         for data_analyzer in self.data_analyzers_objects:
             analysis_result[data_analyzer.__class__] = data_analyzer.analyze(
-                data)
+                generated_data)
 
         if self.first:
             self._create_metrics_objects(analysis_result)
@@ -267,11 +267,7 @@ class PipelineOrchestrator:
             for metric in metrics:
                 for result in analysis_results:
                     metric_obj = self.orchestrator_data[title][metric][result.key]
-                    metric_obj.update(
-                        data=result,
-                        generated_data={gen: generated_data[gen]
-                                        for gen in analysis.get_dependencies()}
-                    )
+                    metric_obj.update(data=result)
 
     def summarize(self) -> None:
         """

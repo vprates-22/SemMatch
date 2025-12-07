@@ -24,29 +24,30 @@ import numpy as np
 from torch import Tensor
 from torchvision import transforms
 
+to_tensor = transforms.ToTensor()
 
-def to_tensor(img_np: np.ndarray) -> torch.Tensor:
-    """
-    Converts a NumPy image array to a normalized PyTorch tensor.
+# def to_tensor(img_np: np.ndarray) -> torch.Tensor:
+#     """
+#     Converts a NumPy image array to a normalized PyTorch tensor.
 
-    Parameters
-    ----------
-    img_np : np.ndarray
-        Input image as a NumPy array of shape (H, W, C) or (H, W).
+#     Parameters
+#     ----------
+#     img_np : np.ndarray
+#         Input image as a NumPy array of shape (H, W, C) or (H, W).
 
-    Returns
-    -------
-    torch.Tensor
-        Image as a PyTorch tensor of shape (C, H, W) with float32 values in [0, 1].
-    """
-    if isinstance(img_np, torch.Tensor):
-        return img_np
+#     Returns
+#     -------
+#     torch.Tensor
+#         Image as a PyTorch tensor of shape (C, H, W) with float32 values in [0, 1].
+#     """
+#     if isinstance(img_np, torch.Tensor):
+#         return img_np
 
-    img_np = img_np.astype(np.float32) / 255.0
-    img_np = img_np * 2 - 1
-    img_np = np.transpose(img_np, (2, 0, 1))
-    img_tensor = torch.from_numpy(img_np).unsqueeze(0)
-    return img_tensor
+#     img_np = img_np.astype(np.float32) / 255.0
+#     img_np = img_np * 2 - 1
+#     img_np = np.transpose(img_np, (2, 0, 1))
+#     img_tensor = torch.from_numpy(img_np).unsqueeze(0)
+#     return img_tensor
 
 
 def to_cv(torch_image, convert_color=False, batch_idx=0, to_gray=False):

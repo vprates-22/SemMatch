@@ -1,5 +1,6 @@
 import multiprocessing as mp
 
+import json
 import numpy as np
 from tqdm import tqdm
 from torch import Tensor
@@ -24,8 +25,8 @@ class Evaluator(ValidatedClass):
         'dataset_config': {'required': False, 'type': [dict, Config], 'default': {}},
         'resize': {'required': False, 'type': tuple},
         # 'report': {'required': True, 'type': type},
-        'results_path': {'required': False, 'type': str, 'default': RESULTS_PATH},
-        'matches_path': {'required': False, 'type': str, 'default': MATCHES_PATH}
+        'results_path': {'required': False, 'type': [str, Path], 'default': RESULTS_PATH},
+        'matches_path': {'required': False, 'type': [str, Path], 'default': MATCHES_PATH}
     }
 
     def __init__(self, plan: List[AnalysisPlan] = None, config: Union[Config, Dict[str, Any]] = None):
@@ -87,7 +88,7 @@ class Evaluator(ValidatedClass):
 
         matches = self.extract_matches(matcher_fn, name)
 
-        for idx, match in enumerate(matches):
+        for idx, match in tqdm(enumerate(matches), desc='Analysing matches', total=len(matches)):
             mkpts0 = match['mkpts0']
             mkpts1 = match['mkpts1']
 
@@ -109,3 +110,6 @@ class Evaluator(ValidatedClass):
             ))
 
         self.metric_orchestrator.summarize()
+
+        with open('test.json', 'w') as f:
+            json.dump(self.metric_orchestrator.get_results(), f, indent=4)

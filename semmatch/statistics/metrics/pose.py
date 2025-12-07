@@ -9,6 +9,7 @@ for pose estimation accuracy across various thresholds.
 """
 
 import numpy as np
+from collections import defaultdict
 
 from semmatch.configs.base import Config
 from semmatch.statistics.metrics import BaseMetric
@@ -103,17 +104,19 @@ class AUC(BaseMetric):
 
     def __init__(self, config=None):
         default_config = Config(
-            {'pose_thresholds': [5, 10, 20]}).merge_config(config)
-        self._raw_results: dict = {}
-        self._result: dict = {}
+            {'pose_thresholds': [5, 10, 20]}
+        ).merge_config(config)
+
         super().__init__(default_config)
+        self._raw_results: dict = defaultdict(list)
+        self._result: dict = {}
 
     def update(self, data: PoseErrorResult) -> None:
         threshold = data.threshold
 
         self._raw_results[threshold].append({
-            'rotation_errors': data.rotation_error,
-            'translation_errors': data.translation_error,
+            'rotation_error': data.rotation_error,
+            'translation_error': data.translation_error,
         })
 
     def compute(self) -> None:
@@ -123,9 +126,13 @@ class AUC(BaseMetric):
         for thresh_key, entries in self._raw_results.items():
             # Collect all rotation and translation errors for this threshold
             rot_errs = [
-                err for entry in entries for err in entry['rotation_errors']]
+                err['rotation_error']
+                for err in entries 
+            ]
             trans_errs = [
-                err for entry in entries for err in entry['translation_errors']]
+                err['translation_error']
+                for err in entries 
+            ]
             rot_errs = np.array(rot_errs, dtype=float)
             trans_errs = np.array(trans_errs, dtype=float)
 
@@ -149,6 +156,10 @@ class AUC(BaseMetric):
 
         # Store result in the metric system
         self._result = final_results
+
+    def reset(self):
+        self._raw_results = defaultdict(list)
+        self._result = {}
 
     @staticmethod
     def _pose_auc(errors: np.ndarray, thresholds: list[float]) -> list[float]:

@@ -74,10 +74,9 @@ class Accuracy(StandardMetric):
         pair_total = data.true_positives + data.false_positives\
             + data.false_negatives + data.true_negatives
 
-        threshold = data.threshold
         accuracy = _calculate(pair_hit, pair_total)
 
-        self._raw_results[threshold].append(accuracy)
+        self._raw_results.append(accuracy)
 
         self._hits += pair_hit
         self._total += pair_total

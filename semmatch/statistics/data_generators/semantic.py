@@ -13,6 +13,7 @@ generating segmentation masks for keypoints using models like SAM (Segment Anyth
 from semmatch.utils.models import load_sam, get_object_mask
 
 from semmatch.configs.base import Config
+from semmatch.utils.image import to_cv
 from semmatch.statistics.data_generators.base import DataGenerator
 from semmatch.statistics.pipeline_data import RawDataInput, MaskData
 
@@ -75,12 +76,15 @@ class MaskGenerator(DataGenerator):
             generated masks for `mkpts1` in `image1`.
         """
         # masks0 = get_object_mask(
-        #     self.sam, raw_data.image0, raw_data.mkpts0, self._config.mask_batch_size)
+        #     self.sam, to_cv(raw_data.image0), raw_data.mkpts0, self._config.mask_batch_size)
         masks1 = get_object_mask(
-            self.sam, raw_data.image1, raw_data.mkpts1, self._config.mask_batch_size)
+            self.sam, to_cv(raw_data.image1), raw_data.mkpts1, self._config.mask_batch_size)
 
         return [
             MaskData(
+                mkpts0=raw_data.mkpts0,
+                mkpts1=raw_data.mkpts1,
+                masks0=[],
                 masks1=masks1
             )
         ]

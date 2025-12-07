@@ -66,8 +66,8 @@ class BaseDataset(ValidatedClass):
     """
 
     _validation_rules = {
-        'data_path': {'required': True, 'type': str},
-        'pairs_path': {'required': True, 'type': str},
+        'data_path': {'required': True, 'type': [str, Path]},
+        'pairs_path': {'required': True, 'type': [str, Path]},
         'cache_images': {'required': False, 'type': bool, 'default': False},
         'max_pairs': {'required': False, 'type': int, 'default': -1},
         'url': {'required': True, 'type': str},

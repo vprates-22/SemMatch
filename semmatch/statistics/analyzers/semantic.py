@@ -10,6 +10,8 @@ import numpy as np
 
 from collections.abc import Iterable
 
+from numpy.typing import NDArray
+from semmatch.configs.base import Config
 from semmatch.statistics.analyzers.base import DataAnalyzer
 from semmatch.statistics.pipeline_data import AnalysisResult, MatchResult
 from semmatch.statistics.data_generators import ProjectionGenerator, MaskGenerator
@@ -25,6 +27,56 @@ class SemanticMatchAnalyzer(DataAnalyzer):
     """
     _data_generator_depedencies = [ProjectionGenerator, MaskGenerator]
     _data_result_type = MatchResult
+
+    def __init__(self, config = None):
+        default_config = Config({
+            'inlier_threshold': 6.0
+        }).merge_config(config)
+
+        super().__init__(default_config)
+
+    @staticmethod
+    def calculate_inliers(estimated:NDArray, projected:NDArray, threshold:float) -> NDArray[np.bool_]:
+        """
+        Returns a boolean array indicating which points are inliers.
+
+        A point is considered an inlier if the Euclidean distance between the
+        estimated and projected point is less than or equal to the provided
+        `threshold`.
+
+        Parameters
+        ----------
+        estimated : NDArray
+            Array of estimated points with shape (N, D) or (N,).
+        projected : NDArray
+            Array of projected points with shape (N, D) or (N,).
+        threshold : float
+            Distance threshold in pixels (or the same unit as the points).
+
+        Returns
+        -------
+        NDArray[np.bool_]
+            Boolean array of length N indicating which correspondences are inliers.
+        """
+        est = np.asarray(estimated, dtype=float)
+        proj = np.asarray(projected, dtype=float)
+
+        if est.shape[0] != proj.shape[0]:
+            raise ValueError("`estimated` and `projected` must have the same number of points")
+
+        # Normalize shapes para (N, D)
+        if est.ndim == 1:
+            est = est.reshape(-1, 1)
+        if proj.ndim == 1:
+            proj = proj.reshape(-1, 1)
+
+        if est.shape[1] != proj.shape[1]:
+            raise ValueError("`estimated` and `projected` must have the same dimensionality")
+
+        # Distância euclidiana ao quadrado
+        d2 = np.sum((est - proj) ** 2, axis=1)
+        inliers = d2 <= (float(threshold) ** 2)
+        return inliers
 
     def analyze(self, generated_data) -> list[AnalysisResult]:
         """
@@ -63,7 +115,8 @@ class SemanticMatchAnalyzer(DataAnalyzer):
 
         projection_data = projection_datas[0]
 
-        projections = projection_data.projections
+        mkpts1 = projection_data.mkpts1
+        projections = projection_data.projections.astype(int)
         valid = projection_data.valid
         masks1 = semantic_data.masks1
 
@@ -72,13 +125,15 @@ class SemanticMatchAnalyzer(DataAnalyzer):
 
         hits = np.zeros(len(projections), dtype=bool)
 
-        hits[valid] = masks1[np.arange(
-            len(masks1))[valid], ys[valid], xs[valid]]
+        hits[valid] = masks1[np.arange(len(masks1))[valid], ys[valid], xs[valid]]
         misses = ~hits
 
+        if not isinstance(self._config.inlier_threshold, Iterable):
+            self._config.set_config('inlier_threshold', [self._config.inlier_threshold])
+
         data = []
-        for proj_data in projection_datas:
-            inliers = proj_data.inliers
+        for threshold in self._config.inlier_threshold:
+            inliers = self.calculate_inliers(mkpts1, projections, threshold)
 
             true_positives = hits & inliers
             false_positives = misses & inliers
@@ -86,7 +141,7 @@ class SemanticMatchAnalyzer(DataAnalyzer):
             true_negatives = misses & ~inliers
 
             data.append(MatchResult(
-                threshold=proj_data.threshold,
+                threshold=threshold,
 
                 true_positives=true_positives.sum(),
                 false_positives=false_positives.sum(),
