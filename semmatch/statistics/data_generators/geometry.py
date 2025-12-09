@@ -65,7 +65,7 @@ class InlierGenerator(DataGenerator):
         data = []
         for t in threshold:
             data.append(InlierData(
-                threshold=threshold,
+                threshold=t,
                 inliers=raw_input.dataset.get_inliers(
                     raw_input.mkpts0,
                     raw_input.mkpts1,
