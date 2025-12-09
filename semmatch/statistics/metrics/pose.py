@@ -9,7 +9,6 @@ for pose estimation accuracy across various thresholds.
 """
 
 import numpy as np
-from collections import defaultdict
 
 from semmatch.configs.base import Config
 from semmatch.statistics.metrics import BaseMetric
@@ -103,28 +102,24 @@ class AUCBase(PoseMetric):
             'pose_thresholds': [5, 10, 20]
         }).merge_config(config)
         super().__init__(default_config)
-        self._raw_results: dict = defaultdict(list)
         self._result: dict = {}
 
     def compute(self) -> None:
         pose_thresholds = self._config['pose_thresholds']
         final_results = {}
 
-        # Iterate through each pose estimation threshold (e.g., RANSAC threshold)
-        # and its corresponding error entries.
-        for _, entries in self._raw_results.items():
-            errors = np.array(entries, dtype=float)
-            aucs = self._pose_auc(errors, pose_thresholds)
-            final_results = {
-                f'pose_thresholds:{t}': a * 100
-                for t, a in zip(pose_thresholds, aucs)
-            }
+        errors = np.array(self._raw_results, dtype=float)
+        aucs = self._pose_auc(errors, pose_thresholds)
+        final_results = {
+            f'pose_thresholds:{t}': a * 100
+            for t, a in zip(pose_thresholds, aucs)
+        }
 
         self._result = final_results
 
     def reset(self):
-        self._raw_results = defaultdict(list)
-        self._result = {}
+        self._result = []
+        self._raw_results = {}
 
     @staticmethod
     def _pose_auc(errors: np.ndarray, thresholds: list[float]) -> list[float]:
@@ -219,7 +214,7 @@ class AUCRotation(AUCBase):
     """
 
     def update(self, data: PoseErrorResult) -> None:
-        self._raw_results[data.threshold].append(float(data.rotation_error))
+        self._raw_results.append(float(data.rotation_error))
 
 
 class AUCTranslation(AUCBase):
@@ -231,7 +226,7 @@ class AUCTranslation(AUCBase):
     """
 
     def update(self, data: PoseErrorResult) -> None:
-        self._raw_results[data.threshold].append(float(data.translation_error))
+        self._raw_results.append(float(data.translation_error))
 
 
 class AUC(AUCBase):
@@ -250,4 +245,4 @@ class AUC(AUCBase):
     def update(self, data: PoseErrorResult) -> None:
         combined = max(float(data.rotation_error),
                        float(data.translation_error))
-        self._raw_results[data.threshold].append(combined)
+        self._raw_results.append(combined)

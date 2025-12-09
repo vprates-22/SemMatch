@@ -10,6 +10,9 @@ from semmatch.statistics.metrics.error import (
     ErrorMetrics,
     ReprojectionAverageError)
 from semmatch.statistics.metrics.pose import (
+    PoseMetric,
     RotationError,
     TranslationError,
+    AUCRotation,
+    AUCTranslation,
     AUC)

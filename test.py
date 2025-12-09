@@ -65,7 +65,7 @@ if __name__ == "__main__":
         AnalysisPlan(
             title='Pose Estimation Error', 
             analysis=PoseEstimationAnalyzer, 
-            metrics=[RotationError, TranslationError, AUC]
+            metrics=[RotationError, TranslationError, AUC, AUCRotation, AUCTranslation]
         ),
     ]
 

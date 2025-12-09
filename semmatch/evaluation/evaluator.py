@@ -48,6 +48,7 @@ class Evaluator(ValidatedClass):
             name = matcher_fn.__name__
 
         matches_path = Path(self.config.matches_path)
+        matches_path.mkdir(parents=True, exist_ok=True)
         fname = matches_path / f'{name}_matches.npz'
 
         matches = []
